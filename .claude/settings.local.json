@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(curl -s -X POST http://localhost:3000/imoveis \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d '{\"titulo\":\"Apartamento Centro\",\"endereco\":\"Rua das Flores, 100\",\"cidade\":\"Sao Paulo\",\"estado\":\"SP\",\"cep\":\"01000-000\",\"valor_aluguel\":1500.00,\"quartos\":2,\"banheiros\":1,\"vagas_garagem\":1,\"area\":65}' | python -m json.tool 2>/dev/null)",
+      "Bash(curl -s http://localhost:3000/imoveis/1 | python -m json.tool 2>/dev/null)"
+    ]
+  }
+}
