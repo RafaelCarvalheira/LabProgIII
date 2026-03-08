@@ -1,7 +1,7 @@
 {
-  "name": "sistema-imoveis-backend",
+  "name": "rcp-data-imob-backend",
   "version": "1.0.0",
-  "description": "Backend do sistema de imoveis",
+  "description": "Backend do RCP Data Imob",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js"

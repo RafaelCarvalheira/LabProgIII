@@ -12,7 +12,7 @@ function App() {
 
   return (
     <div style={{ fontFamily: 'sans-serif', padding: '2rem', textAlign: 'center' }}>
-      <h1>Sistema de Imoveis</h1>
+      <h1>RCP Data Imob</h1>
       <p>{status}</p>
     </div>
   );

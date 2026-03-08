@@ -1,8 +1,8 @@
-# Sistema de Imoveis
+# RCP Data Imob
 
 Grupo: Rafael Carvalheira, Marcell Parra, Ruan Pablo
 
-Sistema para gerenciamento de imoveis, clientes e locacoes, composto por tres servicos orquestrados via Docker Compose.
+Plataforma de gestao de locacoes de imoveis, composta por tres servicos orquestrados via Docker Compose.
 
 ## Servicos e portas
 
@@ -30,7 +30,7 @@ Todos os endpoints retornam e aceitam **JSON**.
 ```json
 {
   "status": "ok",
-  "servico": "Sistema de Imoveis API",
+  "servico": "RCP Data Imob API",
   "versao": "1.0.0",
   "banco": "conectado",
   "timestamp": "2026-03-08T20:00:00.000Z"

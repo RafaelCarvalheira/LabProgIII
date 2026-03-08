@@ -1,7 +1,7 @@
 {
-  "name": "sistema-imoveis-frontend",
+  "name": "rcp-data-imob-frontend",
   "version": "1.0.0",
-  "description": "Frontend do sistema de imoveis",
+  "description": "Frontend do RCP Data Imob",
   "scripts": {
     "dev": "vite --host 0.0.0.0"
   },
