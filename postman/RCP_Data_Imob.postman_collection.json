@@ -1,0 +1,566 @@
+{
+  "info": {
+    "name": "RCP Data Imob — API REST",
+    "description": "Coleção completa da API REST do sistema de gestão de locações de imóveis. Contém todas as operações CRUD para as entidades: Imóveis, Clientes, Locações, Categorias e Financeiro, além do healthcheck.\n\nBase URL: http://localhost:3000\n\nGrupo: Marcell Parra, Rafael Vargas Carvalheira, Ruan Pablo Rodrigues",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "rcp-data-imob-2026"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "clienteId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "imovelId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "locacaoId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "financeiroId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "categoriaId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0 — Healthcheck",
+      "item": [
+        {
+          "name": "GET /status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["status"]
+            },
+            "description": "Verifica se a API e o banco de dados estão ativos. Retorna 200 OK com status 'ok' e timestamp do banco."
+          },
+          "response": [
+            {
+              "name": "200 OK — banco conectado",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"status\": \"ok\",\n  \"servico\": \"RCP Data Imob API\",\n  \"versao\": \"1.0.0\",\n  \"banco\": \"conectado\",\n  \"timestamp\": \"2026-03-16T15:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 — Clientes (CRUD completo)",
+      "item": [
+        {
+          "name": "POST /clientes — Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Retorna id', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('id');",
+                  "  pm.collectionVariables.set('clienteId', json.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Ana Souza\",\n  \"cpf\": \"123.456.789-00\",\n  \"email\": \"ana@email.com\",\n  \"telefone\": \"(11) 99999-9999\",\n  \"endereco\": \"Rua das Flores, 100 — São Paulo/SP\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/clientes",
+              "host": ["{{baseUrl}}"],
+              "path": ["clientes"]
+            },
+            "description": "Cadastra um novo cliente. Salva o id retornado na variável {{clienteId}} para uso nas próximas requisições."
+          }
+        },
+        {
+          "name": "GET /clientes — Read (listar todos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna array', () => {",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clientes",
+              "host": ["{{baseUrl}}"],
+              "path": ["clientes"]
+            },
+            "description": "Lista todos os clientes cadastrados, ordenados por data de criação decrescente."
+          }
+        },
+        {
+          "name": "GET /clientes/:id — Read (por ID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('ID correto', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.id.toString()).to.eql(pm.collectionVariables.get('clienteId').toString());",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clientes", "{{clienteId}}"]
+            },
+            "description": "Busca um cliente específico pelo ID. Use {{clienteId}} preenchido automaticamente pelo POST."
+          }
+        },
+        {
+          "name": "PUT /clientes/:id — Update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Nome atualizado', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.nome).to.eql('Ana Souza Silva');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Ana Souza Silva\",\n  \"cpf\": \"123.456.789-00\",\n  \"email\": \"ana.silva@email.com\",\n  \"telefone\": \"(11) 98888-7777\",\n  \"endereco\": \"Av. Paulista, 1000 — São Paulo/SP\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clientes", "{{clienteId}}"]
+            },
+            "description": "Atualiza todos os dados do cliente identificado por {{clienteId}}."
+          }
+        },
+        {
+          "name": "DELETE /clientes/:id — Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Mensagem de sucesso', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('mensagem');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clientes/{{clienteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clientes", "{{clienteId}}"]
+            },
+            "description": "Remove o cliente identificado por {{clienteId}}. Retorna mensagem de confirmação."
+          }
+        },
+        {
+          "name": "GET /clientes/:id — 404 (ID inexistente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Mensagem de erro', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('erro');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clientes/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["clientes", "99999"]
+            },
+            "description": "Testa o retorno 404 para um ID que não existe no banco."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — Imóveis (CRUD completo)",
+      "item": [
+        {
+          "name": "POST /imoveis — Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('imovelId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Apartamento Centro — 2 quartos\",\n  \"descricao\": \"Apartamento reformado, 2 quartos, 1 vaga de garagem, próximo ao metrô.\",\n  \"endereco\": \"Rua das Flores, 100\",\n  \"cidade\": \"São Paulo\",\n  \"estado\": \"SP\",\n  \"cep\": \"01000-000\",\n  \"valor_aluguel\": 1500.00,\n  \"valor_venda\": 250000.00,\n  \"area\": 65.0,\n  \"quartos\": 2,\n  \"banheiros\": 1,\n  \"vagas_garagem\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/imoveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["imoveis"]
+            }
+          }
+        },
+        {
+          "name": "GET /imoveis — Read (listar todos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/imoveis",
+              "host": ["{{baseUrl}}"],
+              "path": ["imoveis"]
+            }
+          }
+        },
+        {
+          "name": "GET /imoveis/:id — Read (por ID)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/imoveis/{{imovelId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["imoveis", "{{imovelId}}"]
+            }
+          }
+        },
+        {
+          "name": "PUT /imoveis/:id — Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Apartamento Centro — 2 quartos (reformado)\",\n  \"descricao\": \"Apartamento totalmente reformado em 2025, 2 quartos, 1 suíte.\",\n  \"endereco\": \"Rua das Flores, 100\",\n  \"cidade\": \"São Paulo\",\n  \"estado\": \"SP\",\n  \"cep\": \"01000-000\",\n  \"valor_aluguel\": 1700.00,\n  \"valor_venda\": 270000.00,\n  \"area\": 65.0,\n  \"quartos\": 2,\n  \"banheiros\": 2,\n  \"vagas_garagem\": 1,\n  \"disponivel\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/imoveis/{{imovelId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["imoveis", "{{imovelId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE /imoveis/:id — Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/imoveis/{{imovelId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["imoveis", "{{imovelId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 — Locações",
+      "item": [
+        {
+          "name": "POST /locacoes — Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('locacaoId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"imovel_id\": {{imovelId}},\n  \"cliente_id\": {{clienteId}},\n  \"data_inicio\": \"2026-03-01\",\n  \"data_fim\": \"2027-03-01\",\n  \"valor_mensal\": 1500.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/locacoes",
+              "host": ["{{baseUrl}}"],
+              "path": ["locacoes"]
+            },
+            "description": "Cria uma nova locação vinculando imóvel e cliente. Requer que {{imovelId}} e {{clienteId}} estejam preenchidos."
+          }
+        },
+        {
+          "name": "GET /locacoes — Read (listar todas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locacoes",
+              "host": ["{{baseUrl}}"],
+              "path": ["locacoes"]
+            },
+            "description": "Lista todas as locações com JOIN em imóveis e clientes."
+          }
+        },
+        {
+          "name": "GET /locacoes/:id — Read (por ID)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locacoes/{{locacaoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["locacoes", "{{locacaoId}}"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /locacoes/:id/encerrar — Encerrar locação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Locação encerrada (ativa=false)', () => {",
+                  "  pm.expect(pm.response.json().ativa).to.be.false;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/locacoes/{{locacaoId}}/encerrar",
+              "host": ["{{baseUrl}}"],
+              "path": ["locacoes", "{{locacaoId}}", "encerrar"]
+            },
+            "description": "Encerra uma locação ativa, definindo ativa=false e data_fim=hoje."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 — Financeiro",
+      "item": [
+        {
+          "name": "POST /financeiro — Registrar cobrança",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('financeiroId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locacao_id\": {{locacaoId}},\n  \"tipo\": \"aluguel\",\n  \"valor\": 1500.00,\n  \"data_vencimento\": \"2026-04-05\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/financeiro",
+              "host": ["{{baseUrl}}"],
+              "path": ["financeiro"]
+            }
+          }
+        },
+        {
+          "name": "GET /financeiro — Listar lançamentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro",
+              "host": ["{{baseUrl}}"],
+              "path": ["financeiro"]
+            }
+          }
+        },
+        {
+          "name": "PATCH /financeiro/:id/pagar — Registrar pagamento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Status pago', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('pago');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/financeiro/{{financeiroId}}/pagar",
+              "host": ["{{baseUrl}}"],
+              "path": ["financeiro", "{{financeiroId}}", "pagar"]
+            },
+            "description": "Marca um lançamento como pago, preenchendo data_pagamento=hoje e status='pago'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 — Categorias",
+      "item": [
+        {
+          "name": "POST /categorias — Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('categoriaId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Apartamento\",\n  \"descricao\": \"Imóvel em condomínio vertical\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categorias",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias"]
+            }
+          }
+        },
+        {
+          "name": "GET /categorias — Read (listar todas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categorias",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias"]
+            }
+          }
+        },
+        {
+          "name": "DELETE /categorias/:id — Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categorias/{{categoriaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "{{categoriaId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
