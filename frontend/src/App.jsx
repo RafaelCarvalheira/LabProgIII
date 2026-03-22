@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import Imoveis from './pages/Imoveis';
+import Clientes from './pages/Clientes';
+import Locacoes from './pages/Locacoes';
+import Financeiro from './pages/Financeiro';
 
-function App() {
-  const [status, setStatus] = useState('Carregando...');
-
-  useEffect(() => {
-    fetch('http://localhost:3000/')
-      .then((res) => res.json())
-      .then((data) => setStatus(`Backend: ${data.status}`))
-      .catch(() => setStatus('Backend indisponivel'));
-  }, []);
-
+export default function App() {
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '2rem', textAlign: 'center' }}>
-      <h1>RCP Data Imob</h1>
-      <p>{status}</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/imoveis" element={<Imoveis />} />
+          <Route path="/clientes" element={<Clientes />} />
+          <Route path="/locacoes" element={<Locacoes />} />
+          <Route path="/financeiro" element={<Financeiro />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;
