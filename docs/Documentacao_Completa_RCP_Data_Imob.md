@@ -316,13 +316,14 @@ A API foi construída com Node.js e Express, seguindo princípios REST para orga
 
 ### 9.2. Endpoints de Imóveis
 
-| Método | Rota          | Descrição                              |
-|--------|---------------|----------------------------------------|
-| GET    | /imoveis      | Lista todos os imóveis cadastrados     |
-| GET    | /imoveis/:id  | Retorna um imóvel específico pelo ID   |
-| POST   | /imoveis      | Cria um novo imóvel                    |
-| PUT    | /imoveis/:id  | Atualiza os dados de um imóvel         |
-| DELETE | /imoveis/:id  | Remove um imóvel do sistema            |
+| Método | Rota                        | Descrição                                               |
+|--------|-----------------------------|---------------------------------------------------------|
+| GET    | /imoveis                    | Lista todos os imóveis cadastrados                      |
+| GET    | /imoveis/disponibilidade    | Lista imóveis livres em período (F1) com categorias     |
+| GET    | /imoveis/:id                | Retorna um imóvel específico pelo ID                    |
+| POST   | /imoveis                    | Cria um novo imóvel                                     |
+| PUT    | /imoveis/:id                | Atualiza os dados de um imóvel                          |
+| DELETE | /imoveis/:id                | Remove um imóvel do sistema                             |
 
 ### 9.3. Endpoints de Clientes
 
@@ -361,16 +362,18 @@ A API foi construída com Node.js e Express, seguindo princípios REST para orga
 
 ### 9.7. Resumo Geral dos Endpoints
 
-Ao todo, a API contempla **16 endpoints** organizados por entidade de negócio:
+Ao todo, a API contempla **17 endpoints** organizados por entidade de negócio:
 
 | Entidade    | GET | POST | PUT | PATCH | DELETE | Total |
 |-------------|-----|------|-----|-------|--------|-------|
 | /status     | 1   | —    | —   | —     | —      | 1     |
-| /imoveis    | 2   | 1    | 1   | —     | 1      | 5     |
+| /imoveis    | 3   | 1    | 1   | —     | 1      | 6     |
 | /clientes   | 2   | 1    | 1   | —     | 1      | 5     |
 | /locacoes   | 2   | 1    | —   | 1     | —      | 4     |
 | /categorias | 1   | 1    | —   | —     | 1      | 3     |
 | /financeiro | 1   | 1    | —   | 1     | —      | 3     |
+
+> O terceiro GET de `/imoveis` é o endpoint `/imoveis/disponibilidade`, implementado na F1 (Entregável 5).
 
 ---
 
@@ -680,6 +683,54 @@ docker compose down -v
 | Frontend  | http://localhost:5173       |
 | API REST  | http://localhost:3000       |
 | PostgreSQL| localhost:5432              |
+
+---
+
+## 13.4. Funcionalidade F1 — Busca de Disponibilidade e Criação de Reserva (Entregável 5)
+
+### Descrição
+
+A Funcionalidade F1 implementa o fluxo completo de **busca de imóveis disponíveis em um período** e **criação de reserva** diretamente pela interface web.
+
+### Endpoint da API
+
+| Método | Rota                        | Descrição                                              |
+|--------|-----------------------------|--------------------------------------------------------|
+| GET    | /imoveis/disponibilidade    | Lista imóveis disponíveis em um período, com categorias |
+
+**Query params obrigatórios:** `data_inicio` (YYYY-MM-DD) e `data_fim` (YYYY-MM-DD)
+
+**Lógica de conflito:** um imóvel é considerado indisponível se existir uma locação ativa (`ativa = true`) cujo período se sobrepõe ao período solicitado:
+
+```sql
+NOT EXISTS (
+  SELECT 1 FROM locacoes l
+  WHERE l.imovel_id = i.id
+    AND l.ativa = true
+    AND l.data_inicio <= $data_fim
+    AND (l.data_fim IS NULL OR l.data_fim >= $data_inicio)
+)
+```
+
+**Resposta:** array de imóveis com campo adicional `categorias` (array de objetos `{id, nome}`).
+
+### Tela Implementada
+
+| Rota               | Tela              | Funcionalidades                                                             |
+|--------------------|-------------------|-----------------------------------------------------------------------------|
+| `/disponibilidade` | Disponibilidade   | Form de busca por período, cards de imóveis com categorias, modal de reserva |
+
+### Fluxo Completo
+
+1. Usuário acessa `/disponibilidade` na sidebar (ícone CalendarSearch);
+2. Preenche data de entrada e data de saída, clica em **Buscar Disponíveis**;
+3. O frontend chama `GET /imoveis/disponibilidade?data_inicio=&data_fim=`;
+4. Imóveis disponíveis são exibidos em cards com: título, cidade, quartos, banheiros, vagas, área, categorias como badges e valor mensal;
+5. Usuário clica em **Reservar** em um card;
+6. Modal de confirmação abre com: resumo do imóvel, período pré-preenchido (readonly), select de cliente, valor mensal editável;
+7. Ao confirmar, o frontend chama `POST /locacoes` criando a locação;
+8. Feedback de sucesso é exibido e o imóvel reservado some da listagem;
+9. Em caso de conflito ou erro, mensagem de erro é exibida no modal.
 
 ---
 

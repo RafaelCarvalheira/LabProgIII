@@ -5,6 +5,7 @@ import {
   Users,
   FileKey2,
   DollarSign,
+  CalendarSearch,
 } from 'lucide-react';
 
 const navItems = [
@@ -13,6 +14,7 @@ const navItems = [
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/locacoes', label: 'Locações', icon: FileKey2 },
   { to: '/financeiro', label: 'Financeiro', icon: DollarSign },
+  { to: '/disponibilidade', label: 'Disponibilidade', icon: CalendarSearch },
 ];
 
 export default function Layout() {

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(echo === Locações ativas ===:*)",
+      "Bash(echo === Imóveis ===:*)",
+      "Bash(echo === Criando clientes ===:*)",
+      "Bash(echo === Criando segundo imóvel ===:*)",
+      "Bash(echo === Disponibilidade em ABRIL \\(imóvel 1 ocupado, esperado: só imóvel 2\\) ===:*)",
+      "Bash(echo === Criando categorias ===:*)",
+      "Bash(docker exec:*)",
+      "Bash(echo === PASSO 1: Buscar disponíveis em junho ===:*)",
+      "Bash(which pandoc:*)",
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(cmd:*)",
+      "Bash(powershell:*)"
+    ]
+  }
+}

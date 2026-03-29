@@ -15,6 +15,45 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /imoveis/disponibilidade - buscar imóveis disponíveis em um período
+router.get('/disponibilidade', async (req, res) => {
+  try {
+    const { data_inicio, data_fim } = req.query;
+
+    if (!data_inicio || !data_fim) {
+      return res.status(400).json({ erro: 'Parâmetros data_inicio e data_fim são obrigatórios' });
+    }
+
+    const result = await pool.query(
+      `SELECT i.*,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT('id', ci.id, 'nome', ci.nome)
+          ) FILTER (WHERE ci.id IS NOT NULL),
+          '[]'::json
+        ) AS categorias
+       FROM imoveis i
+       LEFT JOIN imovel_categorias ic ON ic.imovel_id = i.id
+       LEFT JOIN categorias_imoveis ci ON ci.id = ic.categoria_id
+       WHERE i.disponivel = true
+         AND NOT EXISTS (
+           SELECT 1 FROM locacoes l
+           WHERE l.imovel_id = i.id
+             AND l.ativa = true
+             AND l.data_inicio <= $2
+             AND (l.data_fim IS NULL OR l.data_fim >= $1)
+         )
+       GROUP BY i.id
+       ORDER BY i.criado_em DESC`,
+      [data_inicio, data_fim]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // GET /imoveis/:id - buscar imóvel por ID
 router.get('/:id', async (req, res) => {
   try {

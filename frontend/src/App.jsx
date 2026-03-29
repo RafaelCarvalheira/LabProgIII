@@ -5,6 +5,7 @@ import Imoveis from './pages/Imoveis';
 import Clientes from './pages/Clientes';
 import Locacoes from './pages/Locacoes';
 import Financeiro from './pages/Financeiro';
+import Disponibilidade from './pages/Disponibilidade';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/locacoes" element={<Locacoes />} />
           <Route path="/financeiro" element={<Financeiro />} />
+          <Route path="/disponibilidade" element={<Disponibilidade />} />
         </Route>
       </Routes>
     </BrowserRouter>
