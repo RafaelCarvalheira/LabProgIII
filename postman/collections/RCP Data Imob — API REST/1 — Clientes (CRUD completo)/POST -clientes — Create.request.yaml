@@ -1,0 +1,29 @@
+$kind: http-request
+name: POST /clientes — Create
+description: Cadastra um novo cliente. Salva o id retornado na variável
+  {{clienteId}} para uso nas próximas requisições.
+url: "{{baseUrl}}/clientes"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Ana Souza",
+      "cpf": "123.456.789-00",
+      "email": "ana@email.com",
+      "telefone": "(11) 99999-9999",
+      "endereco": "Rua das Flores, 100 — São Paulo/SP"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201 Created', () => pm.response.to.have.status(201));
+      pm.test('Retorna id', () => {
+        const json = pm.response.json();
+        pm.expect(json).to.have.property('id');
+        pm.collectionVariables.set('clienteId', json.id);
+      });
+    language: text/javascript
+order: 1000

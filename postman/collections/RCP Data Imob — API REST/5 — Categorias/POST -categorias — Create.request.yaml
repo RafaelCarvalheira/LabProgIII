@@ -1,0 +1,21 @@
+$kind: http-request
+name: POST /categorias — Create
+url: "{{baseUrl}}/categorias"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Apartamento",
+      "descricao": "Imóvel em condomínio vertical"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201 Created', () => pm.response.to.have.status(201));
+      const json = pm.response.json();
+      pm.collectionVariables.set('categoriaId', json.id);
+    language: text/javascript
+order: 1000

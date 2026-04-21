@@ -1,0 +1,16 @@
+$kind: http-request
+name: DELETE /clientes/:id — Delete
+description: Remove o cliente identificado por {{clienteId}}. Retorna mensagem
+  de confirmação.
+url: "{{baseUrl}}/clientes/{{clienteId}}"
+method: DELETE
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200 OK', () => pm.response.to.have.status(200));
+      pm.test('Mensagem de sucesso', () => {
+        const json = pm.response.json();
+        pm.expect(json).to.have.property('mensagem');
+      });
+    language: text/javascript
+order: 5000

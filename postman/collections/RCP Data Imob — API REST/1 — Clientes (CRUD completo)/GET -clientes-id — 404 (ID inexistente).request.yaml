@@ -1,0 +1,14 @@
+$kind: http-request
+name: GET /clientes/:id — 404 (ID inexistente)
+description: Testa o retorno 404 para um ID que não existe no banco.
+url: "{{baseUrl}}/clientes/99999"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));
+      pm.test('Mensagem de erro', () => {
+        pm.expect(pm.response.json()).to.have.property('erro');
+      });
+    language: text/javascript
+order: 6000

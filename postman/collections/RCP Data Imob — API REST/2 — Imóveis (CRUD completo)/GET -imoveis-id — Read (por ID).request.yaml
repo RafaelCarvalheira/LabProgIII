@@ -1,0 +1,5 @@
+$kind: http-request
+name: GET /imoveis/:id — Read (por ID)
+url: "{{baseUrl}}/imoveis/{{imovelId}}"
+method: GET
+order: 3000

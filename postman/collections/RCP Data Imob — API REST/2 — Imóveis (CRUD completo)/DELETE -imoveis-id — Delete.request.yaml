@@ -1,0 +1,5 @@
+$kind: http-request
+name: DELETE /imoveis/:id — Delete
+url: "{{baseUrl}}/imoveis/{{imovelId}}"
+method: DELETE
+order: 5000

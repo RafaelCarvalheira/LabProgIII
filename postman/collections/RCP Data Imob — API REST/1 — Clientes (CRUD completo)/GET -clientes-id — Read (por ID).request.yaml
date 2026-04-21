@@ -1,0 +1,17 @@
+$kind: http-request
+name: GET /clientes/:id — Read (por ID)
+description: Busca um cliente específico pelo ID. Use {{clienteId}} preenchido
+  automaticamente pelo POST.
+url: "{{baseUrl}}/clientes/{{clienteId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: >-
+      pm.test('Status 200 OK', () => pm.response.to.have.status(200));
+
+      pm.test('ID correto', () => {
+        const json = pm.response.json();
+        pm.expect(json.id.toString()).to.eql(pm.collectionVariables.get('clienteId').toString());
+      });
+    language: text/javascript
+order: 3000

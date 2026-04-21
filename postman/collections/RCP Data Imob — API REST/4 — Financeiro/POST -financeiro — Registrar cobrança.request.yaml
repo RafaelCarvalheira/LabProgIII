@@ -1,0 +1,23 @@
+$kind: http-request
+name: POST /financeiro — Registrar cobrança
+url: "{{baseUrl}}/financeiro"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "locacao_id": {{locacaoId}},
+      "tipo": "aluguel",
+      "valor": 1500.00,
+      "data_vencimento": "2026-04-05"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201 Created', () => pm.response.to.have.status(201));
+      const json = pm.response.json();
+      pm.collectionVariables.set('financeiroId', json.id);
+    language: text/javascript
+order: 1000

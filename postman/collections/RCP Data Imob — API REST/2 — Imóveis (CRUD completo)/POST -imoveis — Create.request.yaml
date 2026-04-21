@@ -1,0 +1,31 @@
+$kind: http-request
+name: POST /imoveis — Create
+url: "{{baseUrl}}/imoveis"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: >-
+    {
+      "titulo": "Apartamento Centro — 2 quartos",
+      "descricao": "Apartamento reformado, 2 quartos, 1 vaga de garagem, próximo ao metrô.",
+      "endereco": "Rua das Flores, 100",
+      "cidade": "São Paulo",
+      "estado": "SP",
+      "cep": "01000-000",
+      "valor_aluguel": 1500.00,
+      "valor_venda": 250000.00,
+      "area": 65.0,
+      "quartos": 2,
+      "banheiros": 1,
+      "vagas_garagem": 1
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201 Created', () => pm.response.to.have.status(201));
+      const json = pm.response.json();
+      pm.collectionVariables.set('imovelId', json.id);
+    language: text/javascript
+order: 1000

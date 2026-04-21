@@ -1,0 +1,25 @@
+$kind: http-request
+name: PUT /imoveis/:id — Update
+url: "{{baseUrl}}/imoveis/{{imovelId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: >-
+    {
+      "titulo": "Apartamento Centro — 2 quartos (reformado)",
+      "descricao": "Apartamento totalmente reformado em 2025, 2 quartos, 1 suíte.",
+      "endereco": "Rua das Flores, 100",
+      "cidade": "São Paulo",
+      "estado": "SP",
+      "cep": "01000-000",
+      "valor_aluguel": 1700.00,
+      "valor_venda": 270000.00,
+      "area": 65.0,
+      "quartos": 2,
+      "banheiros": 2,
+      "vagas_garagem": 1,
+      "disponivel": true
+    }
+order: 4000

@@ -1,0 +1,26 @@
+$kind: http-request
+name: POST /locacoes — Create
+description: Cria uma nova locação vinculando imóvel e cliente. Requer que
+  {{imovelId}} e {{clienteId}} estejam preenchidos.
+url: "{{baseUrl}}/locacoes"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "imovel_id": {{imovelId}},
+      "cliente_id": {{clienteId}},
+      "data_inicio": "2026-03-01",
+      "data_fim": "2027-03-01",
+      "valor_mensal": 1500.00
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 201 Created', () => pm.response.to.have.status(201));
+      const json = pm.response.json();
+      pm.collectionVariables.set('locacaoId', json.id);
+    language: text/javascript
+order: 1000

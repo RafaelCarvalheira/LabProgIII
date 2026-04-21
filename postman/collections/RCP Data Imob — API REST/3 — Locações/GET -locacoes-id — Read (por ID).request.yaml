@@ -1,0 +1,5 @@
+$kind: http-request
+name: GET /locacoes/:id — Read (por ID)
+url: "{{baseUrl}}/locacoes/{{locacaoId}}"
+method: GET
+order: 3000

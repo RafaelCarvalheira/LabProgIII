@@ -1,0 +1,18 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/status"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  body:
+    type: text
+    content: |-
+      {
+        "status": "ok",
+        "servico": "RCP Data Imob API",
+        "versao": "1.0.0",
+        "banco": "conectado",
+        "timestamp": "2026-03-16T15:00:00.000Z"
+      }
+order: 1000

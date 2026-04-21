@@ -1,0 +1,8 @@
+$kind: http-request
+name: GET /status
+description: Verifica se a API e o banco de dados estão ativos. Retorna 200 OK
+  com status 'ok' e timestamp do banco.
+url: "{{baseUrl}}/status"
+method: GET
+examples: ./.resources/GET -status.resources/examples
+order: 1000

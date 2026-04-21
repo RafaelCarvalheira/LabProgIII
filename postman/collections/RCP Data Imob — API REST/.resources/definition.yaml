@@ -1,0 +1,18 @@
+$kind: collection
+description: >-
+  Coleção completa da API REST do sistema de gestão de locações de imóveis.
+  Contém todas as operações CRUD para as entidades: Imóveis, Clientes, Locações,
+  Categorias e Financeiro, além do healthcheck.
+
+
+  Base URL: http://localhost:3000
+
+
+  Grupo: Marcell Parra, Rafael Vargas Carvalheira, Ruan Pablo Rodrigues
+variables:
+  baseUrl: http://localhost:3000
+  clienteId: "1"
+  imovelId: "1"
+  locacaoId: "1"
+  financeiroId: "1"
+  categoriaId: "1"

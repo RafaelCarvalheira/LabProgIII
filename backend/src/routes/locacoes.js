@@ -6,13 +6,20 @@ const router = Router();
 // GET /locacoes - listar todas as locações
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT l.*, i.titulo AS imovel_titulo, c.nome AS cliente_nome
-       FROM locacoes l
-       JOIN imoveis i ON i.id = l.imovel_id
-       JOIN clientes c ON c.id = l.cliente_id
-       ORDER BY l.criado_em DESC`
-    );
+    const { status } = req.query;
+    let query = `
+      SELECT l.*, i.titulo AS imovel_titulo, c.nome AS cliente_nome
+      FROM locacoes l
+      JOIN imoveis i ON i.id = l.imovel_id
+      JOIN clientes c ON c.id = l.cliente_id
+    `;
+    const params = [];
+    if (status) {
+      params.push(status);
+      query += ` WHERE l.status = $1`;
+    }
+    query += ` ORDER BY l.criado_em DESC`;
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -43,11 +50,38 @@ router.get('/:id', async (req, res) => {
 // POST /locacoes - registrar nova locação
 router.post('/', async (req, res) => {
   try {
-    const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal } = req.body;
+    const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status } = req.body;
+
+    // Verifica conflito de datas (só para confirmadas)
+    const statusFinal = status || 'pendente';
+    if (statusFinal === 'confirmada') {
+      const conflito = await pool.query(
+        `SELECT 1 FROM locacoes
+         WHERE imovel_id = $1
+           AND status = 'confirmada'
+           AND data_inicio <= $3
+           AND (data_fim IS NULL OR data_fim >= $2)`,
+        [imovel_id, data_inicio, data_fim || '9999-12-31']
+      );
+      if (conflito.rows.length > 0) {
+        return res.status(409).json({ erro: 'Conflito de datas: imóvel já possui reserva confirmada neste período.' });
+      }
+    }
+
+    // Calcula valor total se datas informadas
+    let valor_total = null;
+    if (data_inicio && data_fim && valor_mensal) {
+      const inicio = new Date(data_inicio);
+      const fim = new Date(data_fim);
+      const dias = Math.max(1, Math.ceil((fim - inicio) / (1000 * 60 * 60 * 24)));
+      const meses = dias / 30;
+      valor_total = parseFloat(valor_mensal) * meses;
+    }
+
     const result = await pool.query(
-      `INSERT INTO locacoes (imovel_id, cliente_id, data_inicio, data_fim, valor_mensal)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [imovel_id, cliente_id, data_inicio, data_fim, valor_mensal]
+      `INSERT INTO locacoes (imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status, valor_total)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, statusFinal, valor_total]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -55,12 +89,108 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH /locacoes/:id/encerrar - encerrar locação
+// PUT /locacoes/:id - editar reserva com revalidação de disponibilidade
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status } = req.body;
+
+    // Busca locação atual
+    const atual = await pool.query('SELECT * FROM locacoes WHERE id=$1', [id]);
+    if (atual.rows.length === 0) {
+      return res.status(404).json({ erro: 'Locação não encontrada' });
+    }
+
+    // Revalida disponibilidade se confirmando ou mudando datas
+    if (status === 'confirmada') {
+      const conflito = await pool.query(
+        `SELECT 1 FROM locacoes
+         WHERE imovel_id = $1
+           AND id != $2
+           AND status = 'confirmada'
+           AND data_inicio <= $4
+           AND (data_fim IS NULL OR data_fim >= $3)`,
+        [imovel_id, id, data_inicio, data_fim || '9999-12-31']
+      );
+      if (conflito.rows.length > 0) {
+        return res.status(409).json({ erro: 'Conflito de datas: imóvel já possui reserva confirmada neste período.' });
+      }
+    }
+
+    // Calcula valor total
+    let valor_total = null;
+    if (data_inicio && data_fim && valor_mensal) {
+      const inicio = new Date(data_inicio);
+      const fim = new Date(data_fim);
+      const dias = Math.max(1, Math.ceil((fim - inicio) / (1000 * 60 * 60 * 24)));
+      const meses = dias / 30;
+      valor_total = parseFloat(valor_mensal) * meses;
+    }
+
+    // ativa baseado no status
+    const ativa = status !== 'cancelada';
+
+    const result = await pool.query(
+      `UPDATE locacoes SET
+         imovel_id=$1, cliente_id=$2, data_inicio=$3, data_fim=$4,
+         valor_mensal=$5, status=$6, valor_total=$7, ativa=$8
+       WHERE id=$9 RETURNING *`,
+      [imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status, valor_total, ativa, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// PATCH /locacoes/:id/status - alterar status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pendente', 'confirmada', 'cancelada'].includes(status)) {
+      return res.status(400).json({ erro: 'Status inválido. Use: pendente, confirmada ou cancelada.' });
+    }
+
+    // Se confirmando, verifica conflito
+    if (status === 'confirmada') {
+      const loc = await pool.query('SELECT * FROM locacoes WHERE id=$1', [id]);
+      if (loc.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
+      const { imovel_id, data_inicio, data_fim } = loc.rows[0];
+
+      const conflito = await pool.query(
+        `SELECT 1 FROM locacoes
+         WHERE imovel_id = $1
+           AND id != $2
+           AND status = 'confirmada'
+           AND data_inicio <= $4
+           AND (data_fim IS NULL OR data_fim >= $3)`,
+        [imovel_id, id, data_inicio, data_fim || '9999-12-31']
+      );
+      if (conflito.rows.length > 0) {
+        return res.status(409).json({ erro: 'Conflito de datas: imóvel já possui reserva confirmada neste período.' });
+      }
+    }
+
+    const ativa = status !== 'cancelada';
+    const result = await pool.query(
+      `UPDATE locacoes SET status=$1, ativa=$2 WHERE id=$3 RETURNING *`,
+      [status, ativa, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// PATCH /locacoes/:id/encerrar - encerrar locação (mantém compatibilidade)
 router.patch('/:id/encerrar', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `UPDATE locacoes SET ativa=false, data_fim=CURRENT_DATE
+      `UPDATE locacoes SET ativa=false, status='cancelada', data_fim=CURRENT_DATE
        WHERE id=$1 RETURNING *`,
       [id]
     );

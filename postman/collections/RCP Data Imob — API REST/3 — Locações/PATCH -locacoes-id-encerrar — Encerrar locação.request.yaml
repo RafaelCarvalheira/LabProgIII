@@ -1,0 +1,14 @@
+$kind: http-request
+name: PATCH /locacoes/:id/encerrar — Encerrar locação
+description: Encerra uma locação ativa, definindo ativa=false e data_fim=hoje.
+url: "{{baseUrl}}/locacoes/{{locacaoId}}/encerrar"
+method: PATCH
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200 OK', () => pm.response.to.have.status(200));
+      pm.test('Locação encerrada (ativa=false)', () => {
+        pm.expect(pm.response.json().ativa).to.be.false;
+      });
+    language: text/javascript
+order: 4000

@@ -1,0 +1,6 @@
+$kind: http-request
+name: GET /locacoes — Read (listar todas)
+description: Lista todas as locações com JOIN em imóveis e clientes.
+url: "{{baseUrl}}/locacoes"
+method: GET
+order: 2000

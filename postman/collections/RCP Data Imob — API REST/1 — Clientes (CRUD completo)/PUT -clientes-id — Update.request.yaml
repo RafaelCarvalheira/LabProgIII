@@ -1,0 +1,27 @@
+$kind: http-request
+name: PUT /clientes/:id — Update
+description: Atualiza todos os dados do cliente identificado por {{clienteId}}.
+url: "{{baseUrl}}/clientes/{{clienteId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Ana Souza Silva",
+      "cpf": "123.456.789-00",
+      "email": "ana.silva@email.com",
+      "telefone": "(11) 98888-7777",
+      "endereco": "Av. Paulista, 1000 — São Paulo/SP"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200 OK', () => pm.response.to.have.status(200));
+      pm.test('Nome atualizado', () => {
+        const json = pm.response.json();
+        pm.expect(json.nome).to.eql('Ana Souza Silva');
+      });
+    language: text/javascript
+order: 4000

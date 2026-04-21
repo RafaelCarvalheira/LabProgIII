@@ -6,6 +6,7 @@ import Clientes from './pages/Clientes';
 import Locacoes from './pages/Locacoes';
 import Financeiro from './pages/Financeiro';
 import Disponibilidade from './pages/Disponibilidade';
+import Calendario from './pages/Calendario';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/locacoes" element={<Locacoes />} />
           <Route path="/financeiro" element={<Financeiro />} />
           <Route path="/disponibilidade" element={<Disponibilidade />} />
+          <Route path="/calendario" element={<Calendario />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -6,15 +6,17 @@ import {
   FileKey2,
   DollarSign,
   CalendarSearch,
+  CalendarDays,
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/imoveis', label: 'Imóveis', icon: Building2 },
-  { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/locacoes', label: 'Locações', icon: FileKey2 },
-  { to: '/financeiro', label: 'Financeiro', icon: DollarSign },
-  { to: '/disponibilidade', label: 'Disponibilidade', icon: CalendarSearch },
+  { to: '/',                label: 'Dashboard',      icon: LayoutDashboard },
+  { to: '/imoveis',         label: 'Imóveis',        icon: Building2 },
+  { to: '/clientes',        label: 'Clientes',       icon: Users },
+  { to: '/locacoes',        label: 'Locações',       icon: FileKey2 },
+  { to: '/financeiro',      label: 'Financeiro',     icon: DollarSign },
+  { to: '/disponibilidade', label: 'Disponibilidade',icon: CalendarSearch },
+  { to: '/calendario',      label: 'Agenda',         icon: CalendarDays },
 ];
 
 export default function Layout() {

@@ -1,0 +1,5 @@
+$kind: http-request
+name: GET /financeiro — Listar lançamentos
+url: "{{baseUrl}}/financeiro"
+method: GET
+order: 2000
