@@ -42,6 +42,13 @@ Após subir, acesse:
 | Frontend | http://localhost:5173   |
 | API REST | http://localhost:3000   |
 
+> **Atualizando de uma versão anterior?** Aplique as migrations sem perder dados:
+> ```bash
+> docker exec -i labprogiii-db-1 psql -U admin -d rcp_data_imob < migration_f2.sql
+> docker exec -i labprogiii-db-1 psql -U admin -d rcp_data_imob < migration_f3.sql
+> ```
+> Em uma instalação limpa (`docker compose down -v` antes de subir), as migrations não são necessárias — `database/init.sql` já cria o schema base e a F3 só adiciona uma coluna opcional + índices.
+
 ---
 
 ## Telas do Frontend
@@ -52,7 +59,7 @@ Após subir, acesse:
 | `/imoveis`    | Imóveis     | Cards com filtros por cidade/status/busca, CRUD completo via modal |
 | `/clientes`   | Clientes    | Tabela com busca por nome, CRUD completo via modal                 |
 | `/locacoes`   | Locações    | Tabela com selects de imóvel/cliente, encerramento de locação      |
-| `/financeiro` | Financeiro  | Cards receitas/despesas, filtro por status, ação de pagamento      |
+| `/financeiro` | Financeiro  | **F3** — 4 KPIs analíticos, gráfico donut por status, filtros expandidos, CRUD completo (criar/editar/excluir/pagar) |
 
 <details>
 <summary>Screenshots das telas</summary>
@@ -199,21 +206,42 @@ Todos os endpoints retornam e aceitam **JSON**.
 
 ---
 
-### Financeiro
+### Financeiro (atualizado pela F3)
 
-| Método | Endpoint                  | Descrição                     |
-|--------|---------------------------|-------------------------------|
-| GET    | /financeiro               | Listar registros financeiros  |
-| POST   | /financeiro               | Registrar cobrança            |
-| PATCH  | /financeiro/:id/pagar     | Marcar cobrança como paga     |
+| Método | Endpoint                     | Descrição                                                                       |
+|--------|------------------------------|---------------------------------------------------------------------------------|
+| GET    | /financeiro                  | Lista lançamentos com filtros: `?tipo=&status=&locacao_id=&data_inicio=&data_fim=` |
+| GET    | /financeiro/resumo           | KPIs analíticos: receitas, despesas, saldo, pendentes, atrasados (F3)            |
+| GET    | /financeiro/por-mes?meses=6  | Série temporal mês a mês para gráficos (F3)                                       |
+| GET    | /financeiro/:id              | Detalhe de um lançamento por ID (F3)                                              |
+| POST   | /financeiro                  | Registra lançamento (aceita campo `descricao`)                                    |
+| PUT    | /financeiro/:id              | Edição completa do lançamento (F3)                                                |
+| PATCH  | /financeiro/:id/pagar        | Marca como pago e grava `data_pagamento`                                          |
+| DELETE | /financeiro/:id              | Remove o lançamento (F3)                                                          |
 
 **Campos do registro financeiro (POST):**
 ```json
 {
   "locacao_id": 1,
-  "tipo": "aluguel",
+  "tipo": "receita",
   "valor": 1500.00,
-  "data_vencimento": "2026-04-05"
+  "data_vencimento": "2026-04-05",
+  "descricao": "Aluguel abril/2026"
+}
+```
+
+**Exemplo de resposta `GET /financeiro/resumo`:**
+```json
+{
+  "total_receitas": 18000.00,
+  "total_despesas": 4500.00,
+  "saldo": 13500.00,
+  "total_pendente": 3000.00,
+  "total_atrasado": 1500.00,
+  "qtd_pendente": 2,
+  "qtd_atrasado": 1,
+  "qtd_pago": 6,
+  "qtd_total": 9
 }
 ```
 

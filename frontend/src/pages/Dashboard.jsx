@@ -29,6 +29,8 @@ function formatCurrency(val) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 }
 
+const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState({ imoveis: 0, clientes: 0, locacoesAtivas: 0, receitaMes: 0 });
@@ -38,56 +40,41 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [imoveisRes, clientesRes, locacoesRes, financeiroRes] = await Promise.all([
+        // F3: usa endpoints analiticos do backend (/financeiro/resumo e /financeiro/por-mes)
+        const [imoveisRes, clientesRes, locacoesRes, resumoRes, porMesRes] = await Promise.all([
           api.get('/imoveis'),
           api.get('/clientes'),
           api.get('/locacoes'),
-          api.get('/financeiro'),
+          api.get('/financeiro/resumo'),
+          api.get('/financeiro/por-mes', { params: { meses: 6 } }),
         ]);
 
         const imoveis = imoveisRes.data;
         const clientes = clientesRes.data;
         const locacoes = locacoesRes.data;
-        const financeiro = financeiroRes.data;
+        const resumo = resumoRes.data;
+        const porMes = porMesRes.data;
 
         const locacoesAtivas = locacoes.filter((l) => l.ativa).length;
-
-        const now = new Date();
-        const mesAtual = now.getMonth();
-        const anoAtual = now.getFullYear();
-        const receitaMes = financeiro
-          .filter((f) => {
-            if (f.status !== 'pago' || !f.data_pagamento) return false;
-            const d = new Date(f.data_pagamento);
-            return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
-          })
-          .reduce((sum, f) => sum + parseFloat(f.valor || 0), 0);
 
         setKpis({
           imoveis: imoveis.length,
           clientes: clientes.length,
           locacoesAtivas,
-          receitaMes,
+          receitaMes: resumo.receitas_recebidas,
         });
 
-        // Chart: aggregate financial by month (last 6 months)
-        const meses = {};
-        const nomesMes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(anoAtual, mesAtual - i, 1);
-          const key = `${d.getFullYear()}-${d.getMonth()}`;
-          meses[key] = { name: nomesMes[d.getMonth()], receita: 0, despesa: 0 };
-        }
-        financeiro.forEach((f) => {
-          const dv = new Date(f.data_vencimento);
-          const key = `${dv.getFullYear()}-${dv.getMonth()}`;
-          if (meses[key]) {
-            const val = parseFloat(f.valor || 0);
-            if (f.tipo === 'receita') meses[key].receita += val;
-            else meses[key].despesa += val;
-          }
-        });
-        setChartData(Object.values(meses));
+        // Mapeia resposta da API ('YYYY-MM') para o formato do grafico
+        setChartData(
+          porMes.map((p) => {
+            const [, m] = p.mes.split('-');
+            return {
+              name: NOMES_MES[parseInt(m, 10) - 1],
+              receita: p.receita,
+              despesa: p.despesa,
+            };
+          })
+        );
 
         setUltimas(locacoes.slice(0, 5));
       } catch (err) {
@@ -120,7 +107,7 @@ export default function Dashboard() {
         <KPICard label="Total de Clientes" value={kpis.clientes} icon={Users} color="bg-indigo-500" delay={80} />
         <KPICard label="Locações Ativas" value={kpis.locacoesAtivas} icon={FileKey2} color="bg-amber-500" delay={160} />
         <KPICard
-          label="Receita do Mês"
+          label="Receita Recebida"
           value={formatCurrency(kpis.receitaMes)}
           icon={DollarSign}
           color="bg-emerald-500"
