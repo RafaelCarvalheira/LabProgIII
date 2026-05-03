@@ -172,7 +172,7 @@
 
   \vspace{1.5cm}
 
-  {\normalsize\color{teal} Março de 2026 — atualizado em Abril de 2026 (Entregável 7)}
+  {\normalsize\color{teal} Março de 2026 — atualizado em Maio de 2026 (Entregável 8)}
 
   \vfill
   \color{gray30}\rule{0.6\textwidth}{0.4pt}
@@ -337,6 +337,24 @@ Axios           & v1.7   & Comunicação HTTP com a API \\
 \hline
 \end{tabularx}
 \caption{Stack do frontend}
+\end{table}
+
+\subsection{Mobile}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\thead{Tecnologia} & \thead{Versão} & \thead{Função no projeto} \\
+\hline
+React Native & 0.81 & Construção da interface mobile nativa \\
+\talt Expo & SDK 54 & Execução local, Metro Bundler e suporte ao Expo Go \\
+React Navigation & 7.x & Navegação por abas e pilha de telas \\
+\talt Expo Vector Icons & 15.x & Ícones da interface mobile \\
+Fetch API & Nativo & Comunicação HTTP com a API REST existente \\
+\hline
+\end{tabularx}
+\caption{Stack do MVP mobile}
 \end{table}
 
 \subsection{Infraestrutura}
@@ -1499,6 +1517,123 @@ PATCH  & /financeiro/:id/pagar      & 200 — status=pago, data\_pagamento=hoje 
 \end{table}
 
 % ══════════════════════════════════════════════════════════════════════════════
+\section{MVP Mobile — React Native (Entregável 8)}
+
+\subsection{Visão Geral}
+
+O Entregável 8 adiciona ao projeto um aplicativo mobile criado com \textbf{React Native + Expo}, localizado no diretório \texttt{mobile/}. O app consome a mesma API REST do backend Node.js/Express e reutiliza a funcionalidade F1 definida no escopo: \textbf{Busca de Disponibilidade e Criação de Reserva}.
+
+A escolha da F1 para o mobile segue a justificativa do projeto: consulta de disponibilidade e criação rápida de reservas são tarefas úteis fora do ambiente de escritório, permitindo atendimento imediato ao cliente.
+
+\subsection{Requisitos Atendidos}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|X|l|}
+\hline
+\thead{Requisito} & \thead{Status} \\
+\hline
+Projeto inicial React Native criado em \texttt{mobile/} & \tok \\
+\talt Estrutura mínima de telas e navegação com abas/pilha & \tok \\
+URL da API configurável por \texttt{EXPO\_PUBLIC\_API\_URL} & \tok \\
+\talt Requisição real \texttt{GET /status} funcionando no app & \tok \\
+Fluxo principal da F1 implementado no mobile & \tok \\
+\talt Documentação e capturas de tela atualizadas & \tok \\
+\hline
+\end{tabularx}
+\caption{Status dos requisitos — Entregável 8}
+\end{table}
+
+\subsection{Estrutura de Telas}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\thead{Tela} & \thead{Descrição} \\
+\hline
+Status & Executa \texttt{GET /status} e exibe serviço, banco, URL da API e estado da conexão \\
+\talt Disponibilidade & Recebe data inicial/final, chama \texttt{GET /imoveis/disponibilidade} e lista imóveis disponíveis \\
+Detalhes do Imóvel & Exibe dados resumidos do imóvel, atributos, categorias, período consultado e valor mensal \\
+\talt Confirmar Reserva & Carrega clientes via \texttt{GET /clientes} e cria reserva com \texttt{POST /locacoes} \\
+Reservas & Lista locações existentes consumindo \texttt{GET /locacoes} \\
+\hline
+\end{tabularx}
+\caption{Telas do MVP mobile}
+\end{table}
+
+\subsection{Endpoints Consumidos}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\thead{Método} & \thead{Endpoint} & \thead{Uso no mobile} \\
+\hline
+GET & /status & Validação de conexão com API e banco \\
+\talt GET & /imoveis/disponibilidade?data\_inicio=\&data\_fim= & Busca de imóveis disponíveis por período \\
+GET & /clientes & Seleção de cliente na criação de reserva \\
+\talt POST & /locacoes & Criação da reserva no backend \\
+GET & /locacoes & Listagem de reservas recentes \\
+\hline
+\end{tabularx}
+\caption{Consumo da API pelo MVP mobile}
+\end{table}
+
+\subsection{Configuração e Execução}
+
+Para emulador Android, a URL padrão configurada no app é \texttt{http://10.0.2.2:3000}. Para celular físico na mesma rede local, deve-se criar um arquivo \texttt{mobile/.env} com o IP do computador:
+
+\begin{lstlisting}
+EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3000
+\end{lstlisting}
+
+Execução local:
+
+\begin{lstlisting}
+# Backend e banco
+docker compose up --build -d
+
+# App mobile
+cd mobile
+npm install
+npm start
+\end{lstlisting}
+
+\subsection{Arquivos Criados/Modificados}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\thead{Arquivo} & \thead{Operação} & \thead{Descrição} \\
+\hline
+mobile/package.json & Criado & Dependências e scripts do app Expo/React Native \\
+\talt mobile/App.js & Criado & Navegação principal com abas e stack da disponibilidade \\
+mobile/src/api/client.js & Criado & Cliente HTTP e configuração da URL da API \\
+\talt mobile/src/screens/*.js & Criado & Telas de status, disponibilidade, detalhes, reserva e listagem \\
+mobile/src/components/*.js & Criado & Botões, cards e componentes visuais reutilizáveis \\
+\talt docs/screenshots/mobile/*.png & Criado & Capturas das telas mobile renderizadas em viewport de celular \\
+README.md & Modificado & Instruções do Entregável 8 e links das capturas \\
+\hline
+\end{tabularx}
+\caption{Arquivos criados/modificados — Entregável 8}
+\end{table}
+
+\subsection{Capturas do MVP Mobile}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.31\textwidth]{screenshots/mobile/mobile-status-api.png}
+  \hfill
+  \includegraphics[width=0.31\textwidth]{screenshots/mobile/mobile-disponibilidade.png}
+  \hfill
+  \includegraphics[width=0.31\textwidth]{screenshots/mobile/mobile-reservas.png}
+  \caption{Telas mobile: status da API, busca de disponibilidade e reservas recentes}
+  \label{fig:mobile-mvp}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════════════════
 \section{Execução do Ambiente}
 
 O projeto foi preparado para execução com Docker Compose, permitindo subir todos os serviços de forma integrada.
@@ -1521,6 +1656,14 @@ docker compose down
 docker compose down -v
 \end{lstlisting}
 
+Para executar o app mobile com Expo:
+
+\begin{lstlisting}
+cd mobile
+npm install
+npm start
+\end{lstlisting}
+
 \subsection{Acessos}
 
 \begin{table}[H]
@@ -1532,6 +1675,7 @@ docker compose down -v
 Frontend    & http://localhost:5173 \\
 \talt API REST    & http://localhost:3000 \\
 PostgreSQL  & localhost:5432 \\
+\talt Mobile Expo & Expo Go / emulador via \texttt{npm start} em \texttt{mobile/} \\
 \hline
 \end{tabular}
 \caption{URLs de acesso aos serviços}
@@ -1557,6 +1701,22 @@ PostgreSQL  & localhost:5432 \\
 \caption{Telas disponíveis no sistema}
 \end{table}
 
+\subsection{Telas Mobile Disponíveis}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\thead{Aba / Tela} & \thead{Função} \\
+\hline
+Status & Validação da API com \texttt{GET /status} \\
+\talt Disponibilidade & Fluxo F1: busca de imóveis, detalhe e reserva \\
+Reservas & Consulta das locações registradas \\
+\hline
+\end{tabularx}
+\caption{Telas disponíveis no MVP mobile}
+\end{table}
+
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Considerações sobre a Implementação}
 
@@ -1569,7 +1729,8 @@ A proposta do sistema demonstra uma evolução consistente ao longo dos entregá
   \item No \textbf{Entregável 4}, foi implementado o frontend completo com React, Vite e Tailwind CSS, configurado no Docker com proxy para o backend, consumindo dados reais da API em todas as 5 telas do sistema;
   \item No \textbf{Entregável 5}, foi implementada a Funcionalidade F1 completa (Busca de Disponibilidade e Criação de Reserva), com novo endpoint de API com lógica de conflito de datas, nova tela no frontend e fluxo de reserva end-to-end funcionando no Docker;
   \item No \textbf{Entregável 6}, foi implementada a Funcionalidade F2 completa (Sistema de Reservas com Status), com ciclo de vida completo de reservas, calendário mensal interativo, cálculo automático de valor total e edição com revalidação de conflito;
-  \item No \textbf{Entregável 7}, foi implementada a Funcionalidade F3 completa (Controle Financeiro com Dashboard Analítico), com endpoints de agregação no backend, filtros avançados, edição e exclusão de lançamentos, marcação automática de atrasados, gráfico de pizza por status e Dashboard alimentado por SQL agregado.
+  \item No \textbf{Entregável 7}, foi implementada a Funcionalidade F3 completa (Controle Financeiro com Dashboard Analítico), com endpoints de agregação no backend, filtros avançados, edição e exclusão de lançamentos, marcação automática de atrasados, gráfico de pizza por status e Dashboard alimentado por SQL agregado;
+  \item No \textbf{Entregável 8}, foi criado o MVP mobile com React Native e Expo, consumindo a mesma API do backend e implementando o fluxo principal da F1 em navegação mobile.
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -1585,6 +1746,8 @@ O Entregável 6 finaliza a Funcionalidade F2, completando o ciclo de vida das re
 
 O Entregável 7 conclui o terceiro pilar do escopo, entregando a Funcionalidade F3 (Controle Financeiro com Dashboard Analítico). A API ganhou endpoints de agregação (\texttt{/financeiro/resumo} e \texttt{/financeiro/por-mes}), além de filtros, edição (PUT), exclusão (DELETE) e marcação automática de lançamentos vencidos como atrasados. A tela de Financeiro foi reescrita com 4 KPIs, gráfico de pizza por status, filtros expandidos e CRUD completo via modal. O Dashboard agora consome a agregação direto do SQL, eliminando processamento no cliente. Com isso, todos os três módulos do escopo (F1, F2 e F3) estão operando ponta-a-ponta no ambiente Docker.
 
+O Entregável 8 amplia a solução para o ambiente mobile. O app React Native criado em \texttt{mobile/} possui navegação por abas, tela de status da API, busca de disponibilidade, detalhe do imóvel, confirmação de reserva e listagem de locações. O fluxo consome os mesmos endpoints do backend, com URL configurável para computador na rede local, mantendo a API como ponto único de integração entre web e mobile.
+
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Referências Internas do Projeto}
 
@@ -1596,6 +1759,7 @@ O Entregável 7 conclui o terceiro pilar do escopo, entregando a Funcionalidade 
   \item Entregável 5 — Funcionalidade F1: Busca de Disponibilidade e Criação de Reserva;
   \item Entregável 6 — Funcionalidade F2: Sistema de Reservas com Status e Calendário Mensal;
   \item Entregável 7 — Funcionalidade F3: Controle Financeiro com Dashboard Analítico;
+  \item Entregável 8 — MVP mobile React Native: F1 no app mobile consumindo a API;
   \item Coleção Postman — \texttt{postman/RCP\_Data\_Imob.postman\_collection.json}.
 \end{itemize}
 
@@ -1603,7 +1767,7 @@ O Entregável 7 conclui o terceiro pilar do escopo, entregando a Funcionalidade 
 \begin{center}
   \color{gray60}\rule{0.5\textwidth}{0.4pt}\\[8pt]
   {\small Marcell Parra Araújo B. Silva \quad•\quad Rafael Vargas Carvalheira \quad•\quad Ruan Pablo Rodrigues}\\[4pt]
-  {\small\color{teal} Março de 2026 — atualizado em Abril de 2026 (Entregável 7)}
+  {\small\color{teal} Março de 2026 — atualizado em Maio de 2026 (Entregável 8)}
 \end{center}
 
 \end{document}

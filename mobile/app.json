@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "RCP Data Imob",
+    "slug": "rcp-data-imob-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "extra": {
+      "apiUrl": "http://10.0.2.2:3000"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}

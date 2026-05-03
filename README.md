@@ -16,6 +16,7 @@ Plataforma de gestão de locações de imóveis, composta por três serviços or
 | db       | PostgreSQL 13 (Alpine) | 5432  |
 | backend  | Node.js 18 / Express   | 3000  |
 | frontend | React 18 / Vite 6      | 5173  |
+| mobile   | Expo / React Native    | 19000+ |
 
 ---
 
@@ -41,6 +42,61 @@ Após subir, acesse:
 |----------|------------------------|
 | Frontend | http://localhost:5173   |
 | API REST | http://localhost:3000   |
+
+---
+
+## Entregável 8 — MVP Mobile
+
+O MVP mobile foi criado em [`mobile/`](mobile/) com **React Native + Expo** e consome a mesma API REST do backend.
+
+### Funcionalidade implementada
+
+Foi escolhida a **F1 — Busca de Disponibilidade e Criação de Reserva**, conforme definido na documentação do projeto. O app mobile possui:
+
+| Tela | Recurso |
+|------|---------|
+| Status | Testa `GET /status` e exibe JSON real da API/banco |
+| Disponibilidade | Busca imóveis disponíveis via `GET /imoveis/disponibilidade?data_inicio=&data_fim=` |
+| Detalhes do imóvel | Mostra dados do imóvel, período consultado, categorias e valor |
+| Confirmar reserva | Carrega clientes via `GET /clientes` e cria reserva via `POST /locacoes` |
+| Reservas | Lista locações existentes via `GET /locacoes` |
+
+### Configurar URL da API
+
+No emulador Android, o app usa por padrão:
+
+```bash
+http://10.0.2.2:3000
+```
+
+Em celular físico na mesma rede local, informe o IP do computador:
+
+```bash
+cd mobile
+copy .env.example .env
+# edite .env:
+# EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3000
+```
+
+### Executar localmente
+
+```bash
+# terminal 1: backend + banco
+docker compose up --build -d
+
+# terminal 2: app mobile
+cd mobile
+npm install
+npm start
+```
+
+Depois, abra pelo Expo Go ou emulador Android/iOS.
+
+### Capturas do MVP mobile
+
+| Status API | Disponibilidade | Reservas |
+|------------|-----------------|----------|
+| ![Status API](docs/screenshots/mobile/mobile-status-api.png) | ![Disponibilidade](docs/screenshots/mobile/mobile-disponibilidade.png) | ![Reservas](docs/screenshots/mobile/mobile-reservas.png) |
 
 > **Atualizando de uma versão anterior?** Aplique as migrations sem perder dados:
 > ```bash
