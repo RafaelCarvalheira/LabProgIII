@@ -11,7 +11,11 @@ function formatCurrency(val) {
 
 function formatDate(d) {
   if (!d) return '—';
-  return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+  // Extrai só a parte da data ("YYYY-MM-DD"), aceitando timestamp ISO completo,
+  // e monta meia-noite local para evitar deslocamento de fuso (off-by-one).
+  const data = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  if (isNaN(data)) return '—';
+  return data.toLocaleDateString('pt-BR');
 }
 
 function calcValorTotal(data_inicio, data_fim, valor_mensal) {

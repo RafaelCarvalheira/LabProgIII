@@ -11,12 +11,12 @@ Plataforma de gestão de locações de imóveis, composta por três serviços or
 
 ## Serviços e Portas
 
-| Serviço  | Tecnologia             | Porta |
-|----------|------------------------|-------|
-| db       | PostgreSQL 13 (Alpine) | 5432  |
-| backend  | Node.js 18 / Express   | 3000  |
-| frontend | React 18 / Vite 6      | 5173  |
-| mobile   | Expo / React Native    | 19000+ |
+| Serviço  | Tecnologia             | Porta (host → container) |
+|----------|------------------------|--------------------------|
+| db       | PostgreSQL 13 (Alpine) | 8039 → 5432  |
+| backend  | Node.js 18 / Express   | 8031 → 3000  |
+| frontend | React 18 / Vite 6      | 8032 → 5173  |
+| mobile   | Expo / React Native    | 19000+ (Expo)            |
 
 ---
 
@@ -38,10 +38,13 @@ docker compose down -v
 
 Após subir, acesse:
 
-| Serviço  | URL                    |
-|----------|------------------------|
-| Frontend | http://localhost:5173   |
-| API REST | http://localhost:3000   |
+| Serviço  | URL                          |
+|----------|------------------------------|
+| Frontend | http://localhost:8032        |
+| API REST | http://localhost:8031        |
+| Healthcheck | http://localhost:8031/status |
+
+O banco já sobe **populado automaticamente** (via `database/init.sql`) — não há etapa manual de carga de dados.
 
 ---
 
@@ -146,7 +149,7 @@ Depois, abra pelo Expo Go ou emulador Android/iOS.
 
 ## API REST — Endpoints
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:8031`
 
 Todos os endpoints retornam e aceitam **JSON**.
 
@@ -347,11 +350,14 @@ Todos os endpoints retornam e aceitam **JSON**.
 │           ├── Imoveis.jsx
 │           ├── Clientes.jsx
 │           ├── Locacoes.jsx
-│           └── Financeiro.jsx
+│           ├── Financeiro.jsx
+│           ├── Disponibilidade.jsx
+│           └── Calendario.jsx
 ├── postman/
 │   └── RCP_Data_Imob.postman_collection.json
 └── docs/
-    ├── Documentacao_Completa_RCP_Data_Imob.md
+    ├── main.tex                        # fonte LaTeX da documentação consolidada
+    ├── RCP_Data_Imob_Documentacao.pdf  # documentação compilada
     └── screenshots/
 ```
 
@@ -359,4 +365,4 @@ Todos os endpoints retornam e aceitam **JSON**.
 
 ## Documentação
 
-A documentação completa do projeto (todos os entregáveis unificados) está em [`docs/Documentacao_Completa_RCP_Data_Imob.md`](docs/Documentacao_Completa_RCP_Data_Imob.md).
+A documentação completa do projeto (todos os entregáveis unificados) está em [`docs/RCP_Data_Imob_Documentacao.pdf`](docs/RCP_Data_Imob_Documentacao.pdf), gerada a partir da fonte LaTeX [`docs/main.tex`](docs/main.tex).

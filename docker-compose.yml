@@ -36,13 +36,13 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://192.168.91.176:8031
+        VITE_API_URL: http://localhost:8031
     ports:
       - "8032:5173"
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://192.168.91.176:8031
+      - VITE_API_URL=http://localhost:8031
     restart: unless-stopped
 
 volumes:

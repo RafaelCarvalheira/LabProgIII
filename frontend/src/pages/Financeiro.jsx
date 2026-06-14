@@ -25,7 +25,11 @@ function formatCurrency(val) {
 
 function formatDate(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('pt-BR');
+  // Extrai só a parte da data ("YYYY-MM-DD") e monta meia-noite local,
+  // evitando deslocamento de fuso (off-by-one) ao receber timestamp ISO/UTC.
+  const data = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  if (isNaN(data)) return '—';
+  return data.toLocaleDateString('pt-BR');
 }
 
 const emptyForm = {

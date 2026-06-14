@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS locacoes (
     data_fim DATE,
     valor_mensal NUMERIC(12, 2) NOT NULL,
     ativa BOOLEAN DEFAULT TRUE,
+    status VARCHAR(50) DEFAULT 'pendente',
+    valor_total NUMERIC(12, 2),
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -66,5 +68,69 @@ CREATE TABLE IF NOT EXISTS financeiro (
     data_vencimento DATE NOT NULL,
     data_pagamento DATE,
     status VARCHAR(50) DEFAULT 'pendente',
+    descricao TEXT,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Índices para acelerar filtros analíticos (F3)
+CREATE INDEX IF NOT EXISTS idx_financeiro_status     ON financeiro(status);
+CREATE INDEX IF NOT EXISTS idx_financeiro_tipo       ON financeiro(tipo);
+CREATE INDEX IF NOT EXISTS idx_financeiro_vencimento ON financeiro(data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_financeiro_locacao    ON financeiro(locacao_id);
+
+-- =============================================================
+-- Dados de exemplo (seed) — UTF-8
+-- Carregados automaticamente apenas na primeira inicialização
+-- do volume do Postgres. Em uma instalação limpa, o sistema já
+-- sobe populado, sem necessidade de migrations ou seed manual.
+-- =============================================================
+
+INSERT INTO categorias_imoveis (id, nome, descricao) VALUES
+  (1, 'Apartamento', 'Imóvel em condomínio vertical'),
+  (2, 'Casa',        'Imóvel residencial horizontal'),
+  (3, 'Studio',      'Unidade compacta de ambiente integrado')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO imoveis (id, titulo, descricao, endereco, cidade, estado, cep, valor_aluguel, valor_venda, area, quartos, banheiros, vagas_garagem, disponivel) VALUES
+  (1, 'Apartamento Centro',   'Apto 2 quartos reformado',   'Rua das Flores, 100', 'São Paulo', 'SP', '01000-000', 1500.00, NULL, 65.00,  2, 1, 1, TRUE),
+  (2, 'Casa Jardins',         'Casa 3 quartos com piscina', 'Av. Paulista, 200',   'São Paulo', 'SP', '01310-000', 3500.00, NULL, 180.00, 3, 2, 2, TRUE),
+  (3, 'Studio Vila Madalena', 'Studio compacto',            'Rua Harmonia, 50',    'São Paulo', 'SP', '05435-000', 2200.00, NULL, 35.00,  1, 1, 0, TRUE)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO imovel_categorias (imovel_id, categoria_id) VALUES
+  (1, 1), (2, 2), (3, 3)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO clientes (id, nome, cpf, email, telefone, endereco) VALUES
+  (1, 'Ana Souza',     '123.456.789-00', 'ana@email.com',    '(11) 99999-9999', 'Rua A, 10'),
+  (2, 'Carlos Mendes', '987.654.321-00', 'carlos@email.com', '(11) 98888-8888', 'Rua B, 20'),
+  (3, 'Marina Lima',   '456.789.123-00', 'marina@email.com', '(11) 97777-7777', 'Rua C, 30')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO locacoes (id, imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, ativa, status, valor_total) VALUES
+  (1, 1, 1, '2026-01-01', '2027-01-01', 1500.00, TRUE, 'confirmada', 18250.00),
+  (2, 2, 2, '2026-02-01', '2026-08-01', 3500.00, TRUE, 'confirmada', 21116.67),
+  (3, 3, 3, '2026-03-01', '2026-09-01', 2200.00, TRUE, 'confirmada', 13493.33)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO financeiro (id, locacao_id, tipo, valor, data_vencimento, data_pagamento, status, descricao) VALUES
+  (1,  1, 'receita', 1500.00, '2026-01-05', '2026-04-27', 'pago',     'Aluguel janeiro/2026'),
+  (2,  1, 'receita', 1500.00, '2026-02-05', '2026-04-27', 'pago',     'Aluguel fevereiro/2026'),
+  (3,  1, 'receita', 1500.00, '2026-03-05', '2026-04-27', 'pago',     'Aluguel março/2026'),
+  (4,  1, 'receita', 1500.00, '2026-04-05', NULL,         'atrasado', 'Aluguel abril/2026'),
+  (5,  2, 'receita', 3500.00, '2026-02-10', '2026-04-27', 'pago',     'Aluguel fevereiro Casa Jardins'),
+  (6,  2, 'receita', 3500.00, '2026-03-10', '2026-04-27', 'pago',     'Aluguel março Casa Jardins'),
+  (7,  2, 'receita', 3500.00, '2026-04-10', NULL,         'atrasado', 'Aluguel abril Casa Jardins'),
+  (8,  3, 'receita', 2200.00, '2026-03-15', '2026-04-27', 'pago',     'Aluguel março Studio'),
+  (9,  3, 'receita', 2200.00, '2026-04-15', NULL,         'atrasado', 'Aluguel abril Studio'),
+  (10, 1, 'despesa',  250.00, '2026-02-20', '2026-04-27', 'pago',     'Conta de luz'),
+  (11, 2, 'despesa',  850.00, '2026-03-25', NULL,         'atrasado', 'Reparo de hidráulica'),
+  (12, 3, 'despesa',  420.00, '2026-04-20', NULL,         'atrasado', 'IPTU mensal')
+ON CONFLICT DO NOTHING;
+
+-- Ressincroniza as sequences de id após inserts com id explícito
+SELECT setval('categorias_imoveis_id_seq', (SELECT MAX(id) FROM categorias_imoveis));
+SELECT setval('imoveis_id_seq',            (SELECT MAX(id) FROM imoveis));
+SELECT setval('clientes_id_seq',           (SELECT MAX(id) FROM clientes));
+SELECT setval('locacoes_id_seq',           (SELECT MAX(id) FROM locacoes));
+SELECT setval('financeiro_id_seq',         (SELECT MAX(id) FROM financeiro));

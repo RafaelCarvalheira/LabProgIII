@@ -20,7 +20,9 @@ function formatCurrency(val) {
 
 function formatDate(d) {
   if (!d) return '—';
-  return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+  const data = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  if (isNaN(data)) return '—';
+  return data.toLocaleDateString('pt-BR');
 }
 
 const today = new Date().toISOString().split('T')[0];

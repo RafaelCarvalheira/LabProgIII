@@ -141,7 +141,7 @@
 % ── Misc ──────────────────────────────────────────────────────────────────────
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt}
-\graphicspath{{./}}
+\graphicspath{{./}{screenshots/}}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \begin{document}
@@ -172,7 +172,7 @@
 
   \vspace{1.5cm}
 
-  {\normalsize\color{teal} Março de 2026 — atualizado em Maio de 2026 (Entregável 8)}
+  {\normalsize\color{teal} Maio de 2026 — atualizado em Maio de 2026 (Entregável 8)}
 
   \vfill
   \color{gray30}\rule{0.6\textwidth}{0.4pt}
@@ -1716,6 +1716,451 @@ Reservas & Consulta das locações registradas \\
 \end{tabularx}
 \caption{Telas disponíveis no MVP mobile}
 \end{table}
+\section{Execução Local com Docker Compose — Entregável 9}
+\subsection{Visão Geral}
+
+O Entregável 9 corresponde à consolidação final do sistema RCP Data Imob para execução local,
+com todos os serviços orquestrados via Docker Compose. A plataforma sobe completa a partir de um
+único comando, com o banco já populado automaticamente, dispensando qualquer etapa manual de
+configuração ou carga de dados.
+
+A consolidação engloba: padronização das variáveis de ambiente e portas para execução em
+\texttt{localhost}, construção e orquestração dos containers via Docker Compose, carga automática
+de dados iniciais no banco (via \texttt{database/init.sql}), e validação do funcionamento integrado
+de todos os serviços (frontend consumindo a API e backend integrado ao banco).
+
+\subsection{Requisitos Atendidos}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|X|l|}
+\hline
+\thead{Requisito} & \thead{Status} \\
+\hline
+Sistema executando localmente via Docker Compose & \tok \\
+\talt Frontend web consumindo a API & \tok \\
+Backend integrado ao banco de dados & \tok \\
+\talt Serviços sobem e permanecem de pé via Docker Compose (\texttt{restart: unless-stopped}) & \tok \\
+Carga automática de dados iniciais no banco (sem etapa manual) & \tok \\
+\talt Variáveis de ambiente consolidadas para backend, banco e frontend & \tok \\
+Validação da comunicação backend $\leftrightarrow$ banco e frontend $\leftrightarrow$ backend & \tok \\
+\talt Sistema inicializado do zero e verificado como utilizável & \tok \\
+\hline
+\end{tabularx}
+\caption{Status dos requisitos — Entregável 9}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Ambiente de Execução}
+
+\subsection{Pré-requisitos}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\thead{Item} & \thead{Valor} \\
+\hline
+Docker           & Docker Engine instalado (Windows, Linux ou macOS) \\
+\talt Docker Compose & Disponível junto ao Docker (plugin \texttt{compose} v2) \\
+Portas livres    & \texttt{8031}, \texttt{8032} e \texttt{8039} disponíveis na máquina \\
+\talt Acesso         & \texttt{localhost} (não há dependência de servidor remoto) \\
+\hline
+\end{tabularx}
+\caption{Pré-requisitos para execução local}
+\end{table}
+
+\subsection{Mapeamento de Portas}
+
+Cada serviço expõe uma porta no \texttt{localhost} da máquina, mapeada para a porta interna do
+container:
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|l|X|}
+\hline
+\thead{Serviço} & \thead{Porta Externa} & \thead{Porta Interna} & \thead{Descrição} \\
+\hline
+backend  & \textbf{8031} & 3000 & API REST Node.js/Express \\
+\talt frontend & \textbf{8032} & 5173 & Interface React/Vite \\
+db       & \textbf{8039} & 5432 & PostgreSQL 13 (Alpine) \\
+\hline
+\end{tabularx}
+\caption{Mapeamento de portas (\texttt{localhost})}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Configuração para Execução Local}
+
+A integração entre os serviços depende de três pontos de configuração no \texttt{docker-compose.yml}
+e no cliente HTTP do frontend:
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Portas:} cada serviço é publicado em \texttt{localhost} nas portas 8031 (backend),
+        8032 (frontend) e 8039 (banco).
+  \item \textbf{URL da API:} como o bundle React roda no navegador, o frontend chama a API por
+        \texttt{http://localhost:8031} (endereço acessível a partir da máquina do usuário).
+  \item \textbf{Variável de ambiente:} \texttt{VITE\_API\_URL} é propagada em tempo de build para o
+        bundle do React, definindo a URL absoluta da API.
+\end{enumerate}
+
+\subsection{Arquivos Relevantes da Configuração}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\thead{Arquivo} & \thead{Papel na configuração} \\
+\hline
+\texttt{docker-compose.yml}          & Define os 3 serviços, portas 8031/8032/8039 e \texttt{VITE\_API\_URL=http://localhost:8031} \\
+\talt \texttt{frontend/Dockerfile}       & Aceita \texttt{VITE\_API\_URL} como \texttt{ARG} de build e expõe via \texttt{ENV} \\
+\texttt{frontend/src/api/axios.js}   & Usa \texttt{import.meta.env.VITE\_API\_URL} quando disponível; fallback para \texttt{/api} \\
+\talt \texttt{database/init.sql}         & Cria o schema completo (com colunas F2/F3 e índices) e carrega os dados iniciais \\
+\hline
+\end{tabularx}
+\caption{Arquivos relevantes para a execução local}
+\end{table}
+
+\subsection{docker-compose.yml}
+
+\begin{lstlisting}[language=YAML2]
+services:
+  db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_DB: rcp_data_imob
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "8039:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d rcp_data_imob"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    ports:
+      - "8031:3000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: rcp_data_imob
+      DB_USER: admin
+      DB_PASSWORD: admin123
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8031
+    ports:
+      - "8032:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8031
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+\end{lstlisting}
+
+\subsection{Axios — Configuração Dinâmica de URL}
+
+O cliente HTTP detecta automaticamente a URL da API:
+
+\begin{lstlisting}[language={}]
+// Quando VITE_API_URL esta definida (caso do Docker Compose), usa a URL
+// absoluta da API. Caso contrario, usa o proxy do Vite (/api).
+const baseURL = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL
+  : '/api';
+
+const api = axios.create({
+  baseURL,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' },
+});
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Inicialização do Banco e Carga de Dados}
+
+\subsection{Carga Automática via \texttt{init.sql}}
+
+Não há etapa manual de carga de dados. O arquivo \texttt{database/init.sql} é montado no container
+do PostgreSQL em \texttt{/docker-entrypoint-initdb.d/} e executado automaticamente na primeira
+inicialização do volume. Ele cria o schema completo — já incluindo as colunas das funcionalidades
+F2 e F3 e os índices analíticos — e insere os dados iniciais em UTF-8, de modo que o sistema sobe
+já populado e correto:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|r|}
+\hline
+\thead{Entidade} & \thead{Registros inseridos} \\
+\hline
+Categorias de imóveis & 3 \\
+\talt Clientes            & 3 \\
+Imóveis               & 3 \\
+\talt Associações imóvel--categoria & 3 \\
+Locações              & 3 (todas confirmadas) \\
+\talt Lançamentos financeiros & 12 (receitas e despesas, pagos e atrasados) \\
+\hline
+\end{tabular}
+\caption{Volume de dados iniciais carregados por \texttt{init.sql}}
+\end{table}
+
+Como as colunas F2/F3 já fazem parte do schema base, uma instalação limpa não requer migrations
+manuais. O trecho abaixo ilustra a consolidação do schema e do seed em UTF-8:
+
+\begin{lstlisting}[language={}]
+-- Colunas das funcionalidades F2/F3 já no schema base
+CREATE TABLE IF NOT EXISTS locacoes (
+  ...
+  status VARCHAR(50) DEFAULT 'pendente',
+  valor_total NUMERIC(12, 2),
+  ...
+);
+
+-- Dados iniciais (seed) em UTF-8
+INSERT INTO imoveis (titulo, cidade, estado, ...) VALUES
+  ('Apartamento Centro',   'São Paulo', 'SP', ...),
+  ('Casa Jardins',         'São Paulo', 'SP', ...),
+  ('Studio Vila Madalena', 'São Paulo', 'SP', ...);
+\end{lstlisting}
+
+Para recarregar os dados do zero (apagando o banco e recriando-o populado), basta remover o volume
+e subir novamente:
+
+\begin{lstlisting}[language=Bash]
+docker compose down -v
+docker compose up --build -d
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Variáveis de Ambiente}
+
+\subsection{Backend}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\thead{Variável} & \thead{Valor} & \thead{Descrição} \\
+\hline
+\texttt{DB\_HOST}     & \texttt{db}             & Nome do serviço PostgreSQL no Compose \\
+\talt \texttt{DB\_PORT}     & \texttt{5432}           & Porta interna do PostgreSQL \\
+\texttt{DB\_NAME}     & \texttt{rcp\_data\_imob} & Nome do banco de dados \\
+\talt \texttt{DB\_USER}     & \texttt{admin}          & Usuário de acesso \\
+\texttt{DB\_PASSWORD} & \texttt{admin123}       & Senha de acesso \\
+\hline
+\end{tabularx}
+\caption{Variáveis de ambiente do backend}
+\end{table}
+
+\subsection{Frontend}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|X|}
+\hline
+\thead{Variável} & \thead{Valor} & \thead{Descrição} \\
+\hline
+\texttt{VITE\_API\_URL} & \texttt{http://localhost:8031} & URL absoluta da API REST; embutida no bundle em tempo de build \\
+\hline
+\end{tabularx}
+\caption{Variáveis de ambiente do frontend}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Passo a Passo da Execução Local}
+
+\subsection{1. Obter o projeto}
+
+\begin{lstlisting}[language=Bash]
+git clone <url-do-repositorio> rcp-data-imob
+cd rcp-data-imob
+\end{lstlisting}
+
+\subsection{2. Subir todos os serviços}
+
+\begin{lstlisting}[language=Bash]
+docker compose up --build -d
+\end{lstlisting}
+
+\subsection{3. Acompanhar a inicialização}
+
+Aguarda-se o healthcheck do PostgreSQL ficar \texttt{healthy}; o backend e o frontend sobem em
+seguida (declarados com \texttt{depends\_on}).
+
+\begin{lstlisting}[language=Bash]
+docker compose ps
+\end{lstlisting}
+
+\subsection{4. Acessar o sistema}
+
+\begin{lstlisting}[language=Bash]
+# Frontend (interface web)
+http://localhost:8032
+
+# API REST — healthcheck
+http://localhost:8031/status
+\end{lstlisting}
+
+\subsection{5. Parar os serviços}
+
+\begin{lstlisting}[language=Bash]
+docker compose down       # para os containers
+docker compose down -v    # para e apaga o banco (recarrega o seed ao subir de novo)
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Validação do Ambiente}
+
+\subsection{Containers em Execução}
+
+Após subir o ambiente, o comando \texttt{docker compose ps} confirma os três serviços ativos e com
+mapeamento de portas correto:
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|l|l|X|}
+\hline
+\thead{Container} & \thead{Imagem} & \thead{Status} & \thead{Portas} \\
+\hline
+\texttt{labprogiii-frontend-1} & \texttt{labprogiii-frontend} & Up & \texttt{0.0.0.0:8032->5173/tcp} \\
+\talt \texttt{labprogiii-backend-1}  & \texttt{labprogiii-backend}  & Up & \texttt{0.0.0.0:8031->3000/tcp} \\
+\texttt{labprogiii-db-1}       & \texttt{postgres:13-alpine} & Up — \textbf{healthy} & \texttt{0.0.0.0:8039->5432/tcp} \\
+\hline
+\end{tabularx}
+\caption{Saída do \texttt{docker compose ps} com os três serviços de pé}
+\end{table}
+
+\subsection{Banco de Dados Populado}
+
+A consulta direta ao PostgreSQL confirmou que o schema foi criado corretamente e os dados
+do seed foram inseridos:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|}
+\hline
+\thead{Tabela} & \thead{Registros} \\
+\hline
+\texttt{categorias\_imoveis} & 3 \\
+\talt \texttt{clientes}           & 3 \\
+\texttt{imoveis}             & 3 (todos em São Paulo/SP) \\
+\talt \texttt{imovel\_categorias} & 3 \\
+\texttt{locacoes}            & 3 (confirmadas) \\
+\talt \texttt{financeiro}         & 12 \\
+\texttt{usuarios}            & 0 (sem cadastro inicial) \\
+\hline
+\end{tabular}
+\caption{Registros confirmados via \texttt{SELECT} no container do banco}
+\end{table}
+
+\subsection{Comunicação Frontend $\leftrightarrow$ Backend}
+
+O frontend acessado em \texttt{http://localhost:8032/imoveis} realizou chamadas HTTP
+bem-sucedidas à API em \texttt{http://localhost:8031}, confirmadas pela aba Network do
+DevTools:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|l|l|}
+\hline
+\thead{Requisição} & \thead{Método} & \thead{Status} & \thead{Iniciador} \\
+\hline
+\texttt{/imoveis}    & XHR (GET)  & \textbf{200} & \texttt{Imoveis.jsx:43} \\
+\talt \texttt{/imoveis}   & XHR (POST) & \textbf{201} & \texttt{Imoveis.jsx:114} \\
+\texttt{/imoveis}    & XHR (PUT)  & \textbf{200} & \texttt{Imoveis.jsx:128} \\
+\talt \texttt{/imoveis} (preflight) & OPTIONS & \textbf{204} & Preflight CORS \\
+\hline
+\end{tabular}
+\caption{Requisições capturadas no DevTools — comunicação frontend $\leftrightarrow$ backend}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Capturas de Tela — Sistema em Execução Local}
+
+As capturas das telas por módulo (Dashboard, Imóveis, Clientes, Locações e Financeiro) estão na
+seção \textit{Capturas de Tela do Frontend (Entregável 4)}. Abaixo são apresentadas as duas telas
+das funcionalidades F1 e F2, com o sistema rodando localmente e consumindo dados reais da API.
+
+\subsection{F1 — Busca de Disponibilidade}
+
+A tela de Disponibilidade consulta o endpoint \texttt{GET /imoveis/disponibilidade} para um período
+informado e lista os imóveis livres, prontos para reserva:
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{tela-disponibilidade.png}
+  \caption{Busca de disponibilidade retornando imóveis livres para o período informado}
+  \label{fig:disponibilidade}
+\end{figure}
+
+\subsection{F2 — Agenda de Reservas}
+
+O calendário mensal exibe todas as locações distribuídas por dia, com legenda de status
+(confirmada/pendente/cancelada):
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{tela-agenda.png}
+  \caption{Agenda de reservas — visualização mensal das locações por status}
+  \label{fig:agenda}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Comandos Úteis}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\thead{Comando} & \thead{Finalidade} \\
+\hline
+\texttt{docker compose up --build -d} & Construir e subir todos os serviços \\
+\talt \texttt{docker compose ps} & Ver status de todos os containers \\
+\texttt{docker compose logs -f backend} & Acompanhar logs do backend em tempo real \\
+\talt \texttt{docker compose logs -f frontend} & Acompanhar logs do frontend \\
+\texttt{docker compose restart backend} & Reiniciar apenas o backend \\
+\talt \texttt{docker compose down} & Parar todos os serviços \\
+\texttt{docker compose down -v} & Parar e remover volumes (apaga o banco e recarrega o seed) \\
+\hline
+\end{tabularx}
+\caption{Referência de comandos para operação local}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{URLs de Acesso ao Sistema}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\thead{Serviço} & \thead{URL} \\
+\hline
+Frontend (interface web) & \texttt{http://localhost:8032} \\
+\talt API REST             & \texttt{http://localhost:8031} \\
+Healthcheck da API        & \texttt{http://localhost:8031/status} \\
+\talt Banco de dados        & \texttt{localhost:8039} \\
+\hline
+\end{tabularx}
+\caption{URLs de acesso ao sistema em execução local}
+\end{table}
+
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Considerações sobre a Implementação}
@@ -1731,6 +2176,7 @@ A proposta do sistema demonstra uma evolução consistente ao longo dos entregá
   \item No \textbf{Entregável 6}, foi implementada a Funcionalidade F2 completa (Sistema de Reservas com Status), com ciclo de vida completo de reservas, calendário mensal interativo, cálculo automático de valor total e edição com revalidação de conflito;
   \item No \textbf{Entregável 7}, foi implementada a Funcionalidade F3 completa (Controle Financeiro com Dashboard Analítico), com endpoints de agregação no backend, filtros avançados, edição e exclusão de lançamentos, marcação automática de atrasados, gráfico de pizza por status e Dashboard alimentado por SQL agregado;
   \item No \textbf{Entregável 8}, foi criado o MVP mobile com React Native e Expo, consumindo a mesma API do backend e implementando o fluxo principal da F1 em navegação mobile.
+  \item No \textbf{Entregável 9}, o sistema foi consolidado para execução local via Docker Compose, com o banco populado automaticamente pelo \texttt{init.sql} (sem etapas manuais), e foram realizados testes para validar o correto funcionamento integrado dos serviços (frontend consumindo a API e backend integrado ao banco).
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -1748,6 +2194,10 @@ O Entregável 7 conclui o terceiro pilar do escopo, entregando a Funcionalidade 
 
 O Entregável 8 amplia a solução para o ambiente mobile. O app React Native criado em \texttt{mobile/} possui navegação por abas, tela de status da API, busca de disponibilidade, detalhe do imóvel, confirmação de reserva e listagem de locações. O fluxo consome os mesmos endpoints do backend, com URL configurável para computador na rede local, mantendo a API como ponto único de integração entre web e mobile.
 
+O Entregável 9 concluiu o ciclo de desenvolvimento do sistema RCP Data Imob com a consolidação
+para execução local via Docker Compose. O ambiente sobe completo a partir de um único comando,
+com o banco populado automaticamente pelo \texttt{init.sql} e os três serviços integrados e
+validados ponta a ponta (frontend $\leftrightarrow$ backend $\leftrightarrow$ banco).
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Referências Internas do Projeto}
 
@@ -1760,6 +2210,7 @@ O Entregável 8 amplia a solução para o ambiente mobile. O app React Native cr
   \item Entregável 6 — Funcionalidade F2: Sistema de Reservas com Status e Calendário Mensal;
   \item Entregável 7 — Funcionalidade F3: Controle Financeiro com Dashboard Analítico;
   \item Entregável 8 — MVP mobile React Native: F1 no app mobile consumindo a API;
+  \item Entregável 9 — Consolidação e execução local via Docker Compose, com banco populado automaticamente;
   \item Coleção Postman — \texttt{postman/RCP\_Data\_Imob.postman\_collection.json}.
 \end{itemize}
 
@@ -1771,3 +2222,4 @@ O Entregável 8 amplia a solução para o ambiente mobile. O app React Native cr
 \end{center}
 
 \end{document}
+

@@ -209,14 +209,14 @@ export default function Calendario() {
               <div className="flex justify-between">
                 <span className="text-slate-400">Início</span>
                 <span className="font-medium text-slate-700">
-                  {new Date(selected.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  {new Date(String(selected.data_inicio).slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Fim</span>
                 <span className="font-medium text-slate-700">
                   {selected.data_fim
-                    ? new Date(selected.data_fim + 'T00:00:00').toLocaleDateString('pt-BR')
+                    ? new Date(String(selected.data_fim).slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR')
                     : '—'}
                 </span>
               </div>
