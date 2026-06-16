@@ -81,7 +81,24 @@ copy .env.example .env
 # EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:3000
 ```
 
-### Executar localmente
+### Executar tudo com um comando
+
+Na **raiz do projeto**, um único comando sobe o banco + backend + frontend (Docker) e inicia o app mobile (Expo):
+
+```bash
+npm run dev
+```
+
+Esse comando:
+1. Detecta o IP da máquina na rede local e grava `mobile/.env` apontando para `http://SEU_IP:3000` (via `scripts/dev-setup.js`) — assim o app já funciona em **celular físico** pelo Expo Go.
+2. Sobe os containers com `docker compose up --build -d` (o backend é exposto tanto na `8031` quanto na `3000`).
+3. Roda `npm install` e `npm start` dentro de `mobile/`, abrindo o Expo Dev Server (QR Code).
+
+Depois é só abrir pelo **Expo Go** (escaneando o QR, com o celular na mesma rede Wi-Fi) ou pelo **emulador Android/iOS**.
+
+> Scripts auxiliares (raiz): `npm run up` (só Docker), `npm run mobile` (só Expo), `npm run logs`, `npm run stop`, `npm run reset` (apaga o banco).
+
+### Executar manualmente (passo a passo)
 
 ```bash
 # terminal 1: backend + banco

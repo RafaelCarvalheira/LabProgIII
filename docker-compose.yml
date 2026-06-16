@@ -21,6 +21,7 @@ services:
     build: ./backend
     ports:
       - "8031:3000"
+      - "3000:3000"
     environment:
       DB_HOST: db
       DB_PORT: 5432
