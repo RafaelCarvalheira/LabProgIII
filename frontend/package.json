@@ -4,7 +4,9 @@
   "type": "module",
   "description": "Frontend do RCP Data Imob",
   "scripts": {
-    "dev": "vite --host 0.0.0.0"
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.2.0",
