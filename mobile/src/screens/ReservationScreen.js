@@ -16,39 +16,25 @@ import { formatCurrency, formatDate } from '../utils/format';
 
 export default function ReservationScreen({ route, navigation }) {
   const { property, dataInicio, dataFim } = route.params;
-  const [clientes, setClientes] = useState([]);
-  const [clienteId, setClienteId] = useState(null);
-  const [valorMensal, setValorMensal] = useState(String(property.valor_aluguel || ''));
+  const [clientes, setClientes]           = useState([]);
+  const [clienteId, setClienteId]         = useState(null);
+  const [valorMensal, setValorMensal]     = useState(String(property.valor_aluguel || ''));
   const [loadingClientes, setLoadingClientes] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [saving, setSaving]               = useState(false);
+  const [error, setError]                 = useState('');
+  const [success, setSuccess]             = useState('');
 
   useEffect(() => {
     let alive = true;
-    api
-      .get('/clientes')
-      .then((data) => {
-        if (alive) setClientes(data);
-      })
-      .catch((err) => {
-        if (alive) setError(err.message);
-      })
-      .finally(() => {
-        if (alive) setLoadingClientes(false);
-      });
-
-    return () => {
-      alive = false;
-    };
+    api.get('/clientes')
+      .then((data) => { if (alive) setClientes(data); })
+      .catch((err) => { if (alive) setError(err.message); })
+      .finally(() => { if (alive) setLoadingClientes(false); });
+    return () => { alive = false; };
   }, []);
 
   async function confirmReservation() {
-    if (!clienteId) {
-      setError('Selecione um cliente para continuar.');
-      return;
-    }
-
+    if (!clienteId) { setError('Selecione um cliente para continuar.'); return; }
     setSaving(true);
     setError('');
     setSuccess('');
@@ -60,8 +46,8 @@ export default function ReservationScreen({ route, navigation }) {
         data_fim: dataFim,
         valor_mensal: Number(valorMensal) || 0,
       });
-      setSuccess('Reserva criada com sucesso.');
-      setTimeout(() => navigation.navigate('BuscarDisponibilidade'), 900);
+      setSuccess('Reserva criada com sucesso!');
+      setTimeout(() => navigation.navigate('BuscarDisponibilidade'), 1200);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -71,16 +57,18 @@ export default function ReservationScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {/* Resumo */}
       <View style={styles.summary}>
         <Text style={styles.summaryTitle}>{property.titulo}</Text>
         <Text style={styles.summaryMeta}>
-          {formatDate(dataInicio)} até {formatDate(dataFim)}
+          {formatDate(dataInicio)} → {formatDate(dataFim)}
         </Text>
         <Text style={styles.summaryPrice}>{formatCurrency(valorMensal)}</Text>
       </View>
 
+      {/* Seleção de cliente */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Cliente</Text>
+        <Text style={styles.sectionTitle}>Selecionar cliente</Text>
         {loadingClientes ? (
           <ActivityIndicator color={colors.brand} />
         ) : (
@@ -110,6 +98,7 @@ export default function ReservationScreen({ route, navigation }) {
         )}
       </View>
 
+      {/* Valor mensal */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Valor mensal</Text>
         <TextInput
@@ -117,19 +106,20 @@ export default function ReservationScreen({ route, navigation }) {
           onChangeText={setValorMensal}
           keyboardType="decimal-pad"
           style={styles.input}
+          placeholderTextColor={colors.muted}
         />
       </View>
 
       {error ? (
         <View style={styles.feedbackError}>
-          <Ionicons name="alert-circle-outline" color={colors.danger} size={18} />
+          <Ionicons name="alert-circle-outline" color={colors.danger} size={16} />
           <Text style={styles.feedbackErrorText}>{error}</Text>
         </View>
       ) : null}
 
       {success ? (
         <View style={styles.feedbackSuccess}>
-          <Ionicons name="checkmark-circle-outline" color={colors.success} size={18} />
+          <Ionicons name="checkmark-circle-outline" color={colors.success} size={16} />
           <Text style={styles.feedbackSuccessText}>{success}</Text>
         </View>
       ) : null}
@@ -145,116 +135,82 @@ export default function ReservationScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-  },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 20, gap: 16, paddingBottom: 36 },
+
   summary: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
+    backgroundColor: 'rgba(17,24,39,0.9)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
+    borderColor: 'rgba(20,184,166,0.2)',
+    padding: 18,
   },
-  summaryTitle: {
-    color: colors.ink,
-    fontSize: 22,
-    lineHeight: 27,
-    fontWeight: '900',
-  },
-  summaryMeta: {
-    color: colors.muted,
-    marginTop: 8,
-  },
-  summaryPrice: {
-    color: colors.brandDark,
-    fontSize: 26,
-    fontWeight: '900',
-    marginTop: 10,
-  },
+  summaryTitle: { color: colors.ink, fontSize: 20, lineHeight: 26, fontWeight: '900' },
+  summaryMeta:  { color: colors.muted, marginTop: 8, fontSize: 13 },
+  summaryPrice: { color: colors.accent, fontSize: 26, fontWeight: '900', marginTop: 10 },
+
   section: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
+    backgroundColor: 'rgba(17,24,39,0.9)',
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
   },
-  sectionTitle: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: '900',
-    marginBottom: 12,
-  },
-  clientList: {
-    gap: 10,
-  },
+  sectionTitle: { color: colors.ink, fontSize: 15, fontWeight: '800', marginBottom: 12 },
+
+  clientList: { gap: 10 },
   client: {
-    minHeight: 58,
-    borderRadius: 8,
+    minHeight: 56,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   clientSelected: {
-    borderColor: colors.brand,
-    backgroundColor: '#F0FAF5',
+    borderColor: 'rgba(99,102,241,0.4)',
+    backgroundColor: colors.brandLight,
   },
-  clientTextWrap: {
-    flex: 1,
-  },
-  clientName: {
-    color: colors.ink,
-    fontWeight: '900',
-    fontSize: 15,
-  },
-  clientMeta: {
-    color: colors.muted,
-    marginTop: 2,
-    fontSize: 12,
-  },
+  clientTextWrap: { flex: 1 },
+  clientName: { color: colors.ink, fontWeight: '800', fontSize: 14 },
+  clientMeta: { color: colors.muted, marginTop: 2, fontSize: 12 },
+
   input: {
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     color: colors.ink,
     paddingHorizontal: 14,
     fontSize: 17,
     fontWeight: '800',
   },
+
   feedbackError: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     padding: 12,
-    backgroundColor: '#FFF1F1',
-    borderColor: '#F3C5C5',
+    backgroundColor: colors.dangerMuted,
+    borderColor: 'rgba(239,68,68,0.2)',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  feedbackErrorText: {
-    color: colors.danger,
-    flex: 1,
-  },
+  feedbackErrorText: { color: colors.danger, flex: 1, fontSize: 13 },
+
   feedbackSuccess: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     padding: 12,
-    backgroundColor: '#F0FAF5',
-    borderColor: '#B7DCCF',
+    backgroundColor: colors.successMuted,
+    borderColor: 'rgba(16,185,129,0.25)',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  feedbackSuccessText: {
-    color: colors.success,
-    flex: 1,
-    fontWeight: '800',
-  },
+  feedbackSuccessText: { color: colors.success, flex: 1, fontWeight: '700', fontSize: 13 },
 });

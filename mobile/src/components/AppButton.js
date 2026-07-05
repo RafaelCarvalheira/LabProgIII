@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
 
 export default function AppButton({
@@ -17,56 +18,71 @@ export default function AppButton({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.button,
-        isSecondary ? styles.secondary : styles.primary,
+        styles.wrapper,
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
       ]}
     >
-      {icon && (
-        <Ionicons
-          name={icon}
-          size={18}
-          color={isSecondary ? colors.brand : colors.surface}
-        />
+      {isSecondary ? (
+        <View style={styles.secondary}>
+          {icon && <Ionicons name={icon} size={17} color={colors.brand} />}
+          <Text style={styles.secondaryLabel}>{label}</Text>
+        </View>
+      ) : (
+        <LinearGradient
+          colors={['#6366F1', '#4F46E5', '#14B8A6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.primary}
+        >
+          {icon && <Ionicons name={icon} size={17} color="#fff" />}
+          <Text style={styles.primaryLabel}>{label}</Text>
+        </LinearGradient>
       )}
-      <Text style={[styles.label, isSecondary && styles.secondaryLabel]}>
-        {label}
-      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    minHeight: 48,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 18,
-  },
-  primary: {
-    backgroundColor: colors.brand,
-  },
-  secondary: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+  wrapper: {
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   disabled: {
-    opacity: 0.55,
+    opacity: 0.5,
   },
   pressed: {
     transform: [{ scale: 0.98 }],
+    opacity: 0.88,
   },
-  label: {
-    color: colors.surface,
+  primary: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  primaryLabel: {
+    color: '#fff',
     fontWeight: '800',
     fontSize: 15,
   },
+  secondary: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(99,102,241,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.25)',
+    borderRadius: 14,
+  },
   secondaryLabel: {
     color: colors.brand,
+    fontWeight: '800',
+    fontSize: 15,
   },
 });
