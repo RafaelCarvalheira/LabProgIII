@@ -3,6 +3,8 @@ const pool = require('../db/pool');
 
 const router = Router();
 
+router.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 router.get('/status', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW() AS timestamp');
