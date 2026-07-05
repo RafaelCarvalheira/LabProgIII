@@ -13,8 +13,10 @@ import {
   LogOut,
   ShieldCheck,
   UserCircle,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import RcpLogo from './RcpLogo';
 
 const ADMIN_NAV = [
   { to: '/',                label: 'Dashboard',       icon: LayoutDashboard },
@@ -24,6 +26,7 @@ const ADMIN_NAV = [
   { to: '/financeiro',      label: 'Financeiro',      icon: DollarSign },
   { to: '/disponibilidade', label: 'Disponibilidade', icon: CalendarSearch },
   { to: '/calendario',      label: 'Agenda',          icon: CalendarDays },
+  { to: '/usuarios',        label: 'Usuários',        icon: KeyRound },
 ];
 
 const CLIENT_NAV = [
@@ -64,7 +67,7 @@ export default function Layout() {
       >
         {/* Logo */}
         <div
-          className="flex items-center px-5 border-b"
+          className="flex items-center px-4 border-b"
           style={{ height: 68, borderColor: 'rgba(255,255,255,0.05)', minWidth: 0 }}
         >
           <AnimatePresence mode="wait">
@@ -75,13 +78,8 @@ export default function Layout() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
                 transition={{ duration: 0.15 }}
-                className="min-w-0"
               >
-                <h1 className="font-display text-[17px] font-800 tracking-tight whitespace-nowrap">
-                  <span className="gradient-text">RCP</span>
-                  <span className="text-white"> Data Imob</span>
-                </h1>
-                <p className="text-[10px] text-slate-600 mt-0.5 font-body">Gestão Imobiliária</p>
+                <RcpLogo size={34} showText subtitle />
               </motion.div>
             ) : (
               <motion.div
@@ -92,7 +90,7 @@ export default function Layout() {
                 transition={{ duration: 0.12 }}
                 className="w-full flex justify-center"
               >
-                <span className="font-display text-base font-800 gradient-text">R</span>
+                <RcpLogo size={32} />
               </motion.div>
             )}
           </AnimatePresence>

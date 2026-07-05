@@ -9,6 +9,7 @@ const clientesRouter  = require('./routes/clientes');
 const locacoesRouter  = require('./routes/locacoes');
 const categoriasRouter = require('./routes/categorias');
 const financeiroRouter = require('./routes/financeiro');
+const usuariosRouter  = require('./routes/usuarios');
 const { requireAuth } = require('./middleware/auth');
 
 const app  = express();
@@ -27,6 +28,7 @@ app.use('/clientes',   requireAuth, clientesRouter);
 app.use('/locacoes',   requireAuth, locacoesRouter);
 app.use('/categorias', requireAuth, categoriasRouter);
 app.use('/financeiro', requireAuth, financeiroRouter);
+app.use('/usuarios',  requireAuth, usuariosRouter);
 
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Backend rodando na porta ${PORT}`);

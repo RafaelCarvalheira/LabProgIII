@@ -7,7 +7,10 @@ import {
   DollarSign,
   TrendingUp,
   ArrowUpRight,
+  Sparkles,
 } from 'lucide-react';
+import RcpLogo from '../components/RcpLogo';
+import { useAuth } from '../context/AuthContext';
 import {
   BarChart,
   Bar,
@@ -194,6 +197,7 @@ const containerVariants = {
 
 /* ── Dashboard ────────────────────────────────────────────── */
 export default function Dashboard() {
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading]   = useState(true);
   const [kpis, setKpis]         = useState({ imoveis: 0, clientes: 0, locacoesAtivas: 0, receitaMes: 0 });
   const [chartData, setChartData] = useState([]);
@@ -259,20 +263,73 @@ export default function Dashboard() {
     );
   }
 
+  const hora = new Date().getHours();
+  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+
   return (
     <div>
-      {/* Page Header */}
+      {/* ── Hero com logo ──────────────────────────────────── */}
       <motion.div
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="mb-8"
+        transition={{ duration: 0.3 }}
+        className="relative overflow-hidden rounded-2xl px-7 py-6 mb-8 flex items-center justify-between gap-6 flex-wrap"
+        style={{
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.14) 0%, rgba(20,184,166,0.08) 100%)',
+          border: '1px solid rgba(99,102,241,0.18)',
+        }}
       >
-        <h1 className="font-display text-2xl font-800 text-white">
+        {/* Orbs decorativos */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full blur-3xl pointer-events-none"
+          style={{ background: 'rgba(99,102,241,0.12)' }} />
+        <div className="absolute -bottom-8 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none"
+          style={{ background: 'rgba(20,184,166,0.10)' }} />
+
+        {/* Logo + texto */}
+        <div className="relative z-10 flex items-center gap-5">
+          <RcpLogo size={56} />
+          <div>
+            <h1 className="font-display text-2xl font-800 text-white leading-tight">
+              RCP <span className="gradient-text">Data Imob</span>
+            </h1>
+            <p className="text-sm text-slate-400 font-body mt-0.5">
+              Plataforma de Gestão Imobiliária
+            </p>
+          </div>
+        </div>
+
+        {/* Saudação + badge */}
+        <div className="relative z-10 text-right">
+          <p className="text-sm text-slate-400 font-body">
+            {saudacao},{' '}
+            <span className="text-slate-200 font-semibold">{user?.nome?.split(' ')[0]}</span>
+          </p>
+          <span
+            className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1 rounded-full text-[11px] font-700 uppercase tracking-wide"
+            style={{
+              background: isAdmin ? 'rgba(99,102,241,0.15)' : 'rgba(20,184,166,0.12)',
+              border: isAdmin ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(20,184,166,0.25)',
+              color: isAdmin ? '#818CF8' : '#2DD4BF',
+            }}
+          >
+            <Sparkles size={10} strokeWidth={2.2} />
+            {isAdmin ? 'Administrador' : 'Proprietário'}
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Sub-header */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="mb-6"
+      >
+        <h2 className="font-display text-lg font-800 text-white">
           Visão <span className="gradient-text">Geral</span>
-        </h1>
-        <p className="text-sm text-slate-500 mt-1 font-body">
-          Resumo financeiro e operacional da plataforma
+        </h2>
+        <p className="text-sm text-slate-500 mt-0.5 font-body">
+          Resumo financeiro e operacional em tempo real
         </p>
       </motion.div>
 

@@ -10,6 +10,7 @@ import Locacoes from './pages/Locacoes';
 import Financeiro from './pages/Financeiro';
 import Disponibilidade from './pages/Disponibilidade';
 import Calendario from './pages/Calendario';
+import Usuarios from './pages/Usuarios';
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/financeiro"       element={<Financeiro />} />
             <Route path="/disponibilidade"  element={<Disponibilidade />} />
             <Route path="/calendario"       element={<Calendario />} />
+            <Route path="/usuarios"         element={<Usuarios />} />
           </Route>
 
           {/* Fallback */}
