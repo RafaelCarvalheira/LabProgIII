@@ -1,152 +1,117 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Plus, FileKey2, XCircle, Pencil, CheckCircle2, Clock, Ban } from 'lucide-react';
 import api from '../api/axios';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import { SkeletonTable } from '../components/Skeleton';
 
-function formatCurrency(val) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
-}
+const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' };
 
-function formatDate(d) {
+function fmt(val)  { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0); }
+function fmtDate(d) {
   if (!d) return '—';
-  // Extrai só a parte da data ("YYYY-MM-DD"), aceitando timestamp ISO completo,
-  // e monta meia-noite local para evitar deslocamento de fuso (off-by-one).
-  const data = new Date(String(d).slice(0, 10) + 'T00:00:00');
-  if (isNaN(data)) return '—';
-  return data.toLocaleDateString('pt-BR');
+  const dt = new Date(String(d).slice(0, 10) + 'T00:00:00');
+  return isNaN(dt) ? '—' : dt.toLocaleDateString('pt-BR');
+}
+function calcTotal(inicio, fim, mensal) {
+  if (!inicio || !fim || !mensal) return null;
+  const dias = Math.max(1, Math.ceil((new Date(fim) - new Date(inicio)) / 86400000));
+  return parseFloat(mensal) * (dias / 30);
 }
 
-function calcValorTotal(data_inicio, data_fim, valor_mensal) {
-  if (!data_inicio || !data_fim || !valor_mensal) return null;
-  const inicio = new Date(data_inicio);
-  const fim = new Date(data_fim);
-  const dias = Math.max(1, Math.ceil((fim - inicio) / (1000 * 60 * 60 * 24)));
-  const meses = dias / 30;
-  return parseFloat(valor_mensal) * meses;
-}
-
-const STATUS_CONFIG = {
-  pendente:   { label: 'Pendente',   icon: Clock,         cls: 'bg-amber-50  text-amber-700  border-amber-200' },
-  confirmada: { label: 'Confirmada', icon: CheckCircle2,  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  cancelada:  { label: 'Cancelada',  icon: Ban,           cls: 'bg-rose-50   text-rose-600   border-rose-200' },
+const STATUS_CFG = {
+  pendente:   { icon: Clock,        cls: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
+  confirmada: { icon: CheckCircle2, cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
+  cancelada:  { icon: Ban,          cls: 'bg-rose-500/15 text-rose-400 border-rose-500/25' },
 };
 
-function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pendente;
+function StatusPill({ status }) {
+  const cfg  = STATUS_CFG[status] || STATUS_CFG.pendente;
   const Icon = cfg.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${cfg.cls}`}>
       <Icon size={11} strokeWidth={2} />
-      {cfg.label}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
 
-const emptyForm = {
-  imovel_id: '', cliente_id: '', data_inicio: '', data_fim: '',
-  valor_mensal: '', status: 'pendente',
-};
+const emptyForm = { imovel_id: '', cliente_id: '', data_inicio: '', data_fim: '', valor_mensal: '', status: 'pendente' };
+const label      = 'block text-xs font-medium text-slate-500 mb-1.5';
+const inputBase  = 'w-full px-4 py-2.5 rounded-xl text-sm font-body';
+const btnPrimary = 'inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl transition-all disabled:opacity-50';
+const btnGhost   = 'px-5 py-2.5 text-sm font-medium text-slate-400 rounded-xl transition-colors hover:text-slate-200';
 
 export default function Locacoes() {
   const [locacoes, setLocacoes] = useState([]);
-  const [imoveis, setImoveis] = useState([]);
+  const [imoveis, setImoveis]   = useState([]);
   const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
+  const [editing, setEditing]   = useState(null);
+  const [form, setForm]         = useState(emptyForm);
+  const [saving, setSaving]     = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError]       = useState('');
 
-  const valorTotal = calcValorTotal(form.data_inicio, form.data_fim, form.valor_mensal);
+  const valorTotal = calcTotal(form.data_inicio, form.data_fim, form.valor_mensal);
 
   async function fetchAll() {
     try {
       const [locRes, imRes, clRes] = await Promise.all([
-        api.get('/locacoes'),
-        api.get('/imoveis'),
-        api.get('/clientes'),
+        api.get('/locacoes'), api.get('/imoveis'), api.get('/clientes'),
       ]);
-      setLocacoes(locRes.data);
-      setImoveis(imRes.data);
-      setClientes(clRes.data);
-    } catch {
-      setError('Erro ao carregar dados');
-    } finally {
-      setLoading(false);
-    }
+      setLocacoes(locRes.data); setImoveis(imRes.data); setClientes(clRes.data);
+    } catch { setError('Erro ao carregar dados'); }
+    finally  { setLoading(false); }
   }
 
   useEffect(() => { fetchAll(); }, []);
 
-  const filtered = filterStatus
-    ? locacoes.filter((l) => l.status === filterStatus)
-    : locacoes;
+  const filtered = filterStatus ? locacoes.filter((l) => l.status === filterStatus) : locacoes;
 
-  function openNew() {
-    setEditing(null);
-    setForm(emptyForm);
-    setError('');
-    setModalOpen(true);
-  }
-
+  function openNew() { setEditing(null); setForm(emptyForm); setError(''); setModalOpen(true); }
   function openEdit(loc) {
     setEditing(loc);
     setForm({
-      imovel_id: loc.imovel_id,
-      cliente_id: loc.cliente_id,
+      imovel_id: loc.imovel_id, cliente_id: loc.cliente_id,
       data_inicio: loc.data_inicio?.split('T')[0] || '',
-      data_fim: loc.data_fim?.split('T')[0] || '',
-      valor_mensal: loc.valor_mensal || '',
-      status: loc.status || 'pendente',
+      data_fim:    loc.data_fim?.split('T')[0]    || '',
+      valor_mensal: loc.valor_mensal || '', status: loc.status || 'pendente',
     });
-    setError('');
-    setModalOpen(true);
+    setError(''); setModalOpen(true);
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
+    e.preventDefault(); setSaving(true); setError('');
     try {
-      const payload = {
-        ...form,
-        valor_mensal: parseFloat(form.valor_mensal) || 0,
-      };
-      if (editing) {
-        await api.put(`/locacoes/${editing.id}`, payload);
-      } else {
-        await api.post('/locacoes', payload);
-      }
-      setModalOpen(false);
-      fetchAll();
-    } catch (err) {
-      setError(err.response?.data?.erro || 'Erro ao salvar locação');
-    } finally {
-      setSaving(false);
-    }
+      const payload = { ...form, valor_mensal: parseFloat(form.valor_mensal) || 0 };
+      if (editing) await api.put(`/locacoes/${editing.id}`, payload);
+      else          await api.post('/locacoes', payload);
+      setModalOpen(false); fetchAll();
+    } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar locação'); }
+    finally       { setSaving(false); }
   }
 
   async function handleChangeStatus(id, status) {
-    try {
-      await api.patch(`/locacoes/${id}/status`, { status });
-      fetchAll();
-    } catch (err) {
-      setError(err.response?.data?.erro || 'Erro ao alterar status');
-    }
+    try { await api.patch(`/locacoes/${id}/status`, { status }); fetchAll(); }
+    catch (err) { setError(err.response?.data?.erro || 'Erro ao alterar status'); }
   }
 
-  function handleChange(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
+  function handleChange(f, v) { setForm((p) => ({ ...p, [f]: v })); }
+
+  const filterOpts = [
+    { val: '',           label: 'Todas' },
+    { val: 'pendente',   label: 'Pendente' },
+    { val: 'confirmada', label: 'Confirmada' },
+    { val: 'cancelada',  label: 'Cancelada' },
+  ];
 
   if (loading) {
     return (
       <div>
-        <h1 className="font-display text-2xl font-800 text-slate-800 mb-8">Locações</h1>
+        <div className="skeleton h-7 w-32 mb-8 rounded-xl" />
         <SkeletonTable rows={6} />
       </div>
     );
@@ -157,47 +122,44 @@ export default function Locacoes() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-display text-2xl font-800 text-slate-800">Locações</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Gerencie reservas e verifique disponibilidade</p>
+          <h1 className="font-display text-2xl font-800 text-white">Locações</h1>
+          <p className="text-sm text-slate-500 mt-0.5 font-body">Gerencie reservas e verifique disponibilidade</p>
         </div>
         <button
           onClick={openNew}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-xl hover:bg-brand-700 transition-colors shadow-sm"
+          className={btnPrimary}
+          style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', boxShadow: '0 4px 14px rgba(99,102,241,0.3)' }}
         >
-          <Plus size={18} strokeWidth={2} />
-          Nova Locação
+          <Plus size={17} strokeWidth={2} /> Nova Locação
         </button>
       </div>
 
-      {/* Filtro por status */}
+      {/* Filter chips */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {[
-          { val: '', label: 'Todas' },
-          { val: 'pendente', label: 'Pendente' },
-          { val: 'confirmada', label: 'Confirmada' },
-          { val: 'cancelada', label: 'Cancelada' },
-        ].map((opt) => (
-          <button
-            key={opt.val}
-            onClick={() => setFilterStatus(opt.val)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-              filterStatus === opt.val
-                ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-brand-400'
-            }`}
-          >
-            {opt.label}
-            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-              filterStatus === opt.val ? 'bg-white/20' : 'bg-slate-100'
-            }`}>
-              {opt.val === '' ? locacoes.length : locacoes.filter(l => l.status === opt.val).length}
-            </span>
-          </button>
-        ))}
+        {filterOpts.map((opt) => {
+          const count = opt.val === '' ? locacoes.length : locacoes.filter((l) => l.status === opt.val).length;
+          const active = filterStatus === opt.val;
+          return (
+            <button
+              key={opt.val}
+              onClick={() => setFilterStatus(opt.val)}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150"
+              style={active
+                ? { background: 'linear-gradient(135deg, #6366F1, #4F46E5)', color: '#fff' }
+                : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#94A3B8' }
+              }
+            >
+              {opt.label}
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20' : 'bg-white/05'}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-600 text-sm rounded-xl">
+        <div className="mb-5 p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>
           {error}
         </div>
       )}
@@ -205,72 +167,73 @@ export default function Locacoes() {
       {filtered.length === 0 ? (
         <EmptyState message="Nenhuma locação encontrada" icon={FileKey2} />
       ) : (
-        <div className="bg-white rounded-xl shadow-card overflow-hidden animate-fade-in-up">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="rounded-2xl overflow-hidden"
+          style={GLASS}
+        >
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Imóvel</th>
-                  <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Cliente</th>
-                  <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Período</th>
-                  <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mensal / Total</th>
-                  <th className="text-left px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Status</th>
-                  <th className="text-right px-6 py-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ações</th>
+                <tr>
+                  <th>Imóvel</th>
+                  <th>Cliente</th>
+                  <th>Período</th>
+                  <th>Mensal / Total</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((loc) => (
-                  <tr key={loc.id} className="border-b border-slate-50 last:border-0 hover:bg-surface transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700 max-w-[160px] truncate">{loc.imovel_titulo}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{loc.cliente_nome}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">
-                      {formatDate(loc.data_inicio)} → {formatDate(loc.data_fim)}
+                  <tr key={loc.id}>
+                    <td className="font-medium text-slate-200 max-w-[160px] truncate">{loc.imovel_titulo}</td>
+                    <td className="text-slate-400">{loc.cliente_nome}</td>
+                    <td className="text-slate-400 whitespace-nowrap text-sm">
+                      {fmtDate(loc.data_inicio)} → {fmtDate(loc.data_fim)}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-brand-700">{formatCurrency(loc.valor_mensal)}<span className="text-xs font-normal text-slate-400">/mês</span></div>
+                    <td>
+                      <div className="text-sm font-semibold text-accent-400">
+                        {fmt(loc.valor_mensal)}<span className="text-xs font-normal text-slate-600">/mês</span>
+                      </div>
                       {loc.valor_total && (
-                        <div className="text-xs text-slate-400">Total: {formatCurrency(loc.valor_total)}</div>
+                        <div className="text-xs text-slate-600">Total: {fmt(loc.valor_total)}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={loc.status || 'pendente'} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
+                    <td><StatusPill status={loc.status || 'pendente'} /></td>
+                    <td style={{ textAlign: 'right' }}>
                       <div className="inline-flex items-center gap-1">
-                        {/* Ações de status rápido */}
                         {loc.status === 'pendente' && (
-                          <button
-                            onClick={() => handleChangeStatus(loc.id, 'confirmada')}
-                            title="Confirmar"
-                            className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors"
-                          >
+                          <button onClick={() => handleChangeStatus(loc.id, 'confirmada')} title="Confirmar"
+                            className="p-1.5 rounded-lg text-emerald-500 transition-colors"
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16,185,129,0.12)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                             <CheckCircle2 size={15} strokeWidth={2} />
                           </button>
                         )}
                         {loc.status !== 'cancelada' && (
-                          <button
-                            onClick={() => handleChangeStatus(loc.id, 'cancelada')}
-                            title="Cancelar"
-                            className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-50 transition-colors"
-                          >
+                          <button onClick={() => handleChangeStatus(loc.id, 'cancelada')} title="Cancelar"
+                            className="p-1.5 rounded-lg text-rose-400 transition-colors"
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                             <XCircle size={15} strokeWidth={2} />
                           </button>
                         )}
                         {loc.status === 'cancelada' && (
-                          <button
-                            onClick={() => handleChangeStatus(loc.id, 'pendente')}
-                            title="Reabrir como pendente"
-                            className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 transition-colors"
-                          >
+                          <button onClick={() => handleChangeStatus(loc.id, 'pendente')} title="Reabrir"
+                            className="p-1.5 rounded-lg text-amber-400 transition-colors"
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(245,158,11,0.12)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                             <Clock size={15} strokeWidth={2} />
                           </button>
                         )}
-                        <button
-                          onClick={() => openEdit(loc)}
-                          title="Editar"
-                          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                        >
-                          <Pencil size={15} strokeWidth={1.8} />
+                        <button onClick={() => openEdit(loc)} title="Editar"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-200 transition-colors"
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Pencil size={14} strokeWidth={1.8} />
                         </button>
                       </div>
                     </td>
@@ -279,118 +242,70 @@ export default function Locacoes() {
               </tbody>
             </table>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Modal Nova/Editar Locação */}
+      {/* Modal */}
       {modalOpen && (
-        <Modal
-          title={editing ? 'Editar Locação' : 'Nova Locação'}
-          onClose={() => setModalOpen(false)}
-        >
+        <Modal title={editing ? 'Editar Locação' : 'Nova Locação'} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 text-sm rounded-xl">
-                {error}
-              </div>
+              <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>
             )}
-
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Imóvel *</label>
-              <select
-                required
-                value={form.imovel_id}
-                onChange={(e) => handleChange('imovel_id', e.target.value)}
-                className="w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              >
+              <label className={label}>Imóvel *</label>
+              <select required value={form.imovel_id} onChange={(e) => handleChange('imovel_id', e.target.value)} className={inputBase}>
                 <option value="">Selecione um imóvel</option>
-                {imoveis.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.titulo} — {i.cidade}
-                  </option>
-                ))}
+                {imoveis.map((i) => <option key={i.id} value={i.id}>{i.titulo} — {i.cidade}</option>)}
               </select>
             </div>
-
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Cliente *</label>
-              <select
-                required
-                value={form.cliente_id}
-                onChange={(e) => handleChange('cliente_id', e.target.value)}
-                className="w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              >
+              <label className={label}>Cliente *</label>
+              <select required value={form.cliente_id} onChange={(e) => handleChange('cliente_id', e.target.value)} className={inputBase}>
                 <option value="">Selecione um cliente</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nome}</option>
-                ))}
+                {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Data Início *</label>
-                <input
-                  required type="date" value={form.data_inicio}
-                  onChange={(e) => handleChange('data_inicio', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                />
+                <label className={label}>Data Início *</label>
+                <input required type="date" value={form.data_inicio} onChange={(e) => handleChange('data_inicio', e.target.value)} className={inputBase} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Data Fim</label>
-                <input
-                  type="date" value={form.data_fim}
-                  onChange={(e) => handleChange('data_fim', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                />
+                <label className={label}>Data Fim</label>
+                <input type="date" value={form.data_fim} onChange={(e) => handleChange('data_fim', e.target.value)} className={inputBase} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Valor Mensal (R$) *</label>
-                <input
-                  required type="number" step="0.01" value={form.valor_mensal}
-                  onChange={(e) => handleChange('valor_mensal', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                />
+                <label className={label}>Valor Mensal (R$) *</label>
+                <input required type="number" step="0.01" value={form.valor_mensal} onChange={(e) => handleChange('valor_mensal', e.target.value)} className={inputBase} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => handleChange('status', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                >
+                <label className={label}>Status</label>
+                <select value={form.status} onChange={(e) => handleChange('status', e.target.value)} className={inputBase}>
                   <option value="pendente">Pendente</option>
                   <option value="confirmada">Confirmada</option>
                   <option value="cancelada">Cancelada</option>
                 </select>
               </div>
             </div>
-
-            {/* Valor total calculado */}
             {valorTotal !== null && (
-              <div className="p-3 bg-brand-50 border border-brand-100 rounded-xl">
-                <p className="text-xs text-brand-600 font-medium mb-0.5">Valor total estimado</p>
-                <p className="text-lg font-display font-700 text-brand-700">
-                  {formatCurrency(valorTotal)}
-                </p>
+              <div className="p-3 rounded-xl" style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.20)' }}>
+                <p className="text-xs text-brand-400 font-medium mb-0.5">Valor total estimado</p>
+                <p className="text-lg font-display font-700 text-brand-300">{fmt(valorTotal)}</p>
                 {form.data_inicio && form.data_fim && (
                   <p className="text-xs text-brand-500 mt-0.5">
-                    {Math.ceil((new Date(form.data_fim) - new Date(form.data_inicio)) / (1000 * 60 * 60 * 24))} dias
+                    {Math.ceil((new Date(form.data_fim) - new Date(form.data_inicio)) / 86400000)} dias
                   </p>
                 )}
               </div>
             )}
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <button type="button" onClick={() => setModalOpen(false)}
-                className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+            <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <button type="button" onClick={() => setModalOpen(false)} className={btnGhost} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 Cancelar
               </button>
-              <button type="submit" disabled={saving}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-50">
+              <button type="submit" disabled={saving} className={btnPrimary} style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
                 {saving ? 'Salvando...' : editing ? 'Atualizar' : 'Registrar'}
               </button>
             </div>

@@ -1,46 +1,207 @@
-import { useState, useEffect } from 'react';
-import { Building2, Users, FileKey2, DollarSign, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Building2,
+  Users,
+  FileKey2,
+  DollarSign,
+  TrendingUp,
+  ArrowUpRight,
+} from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 import api from '../api/axios';
-import { SkeletonCard } from '../components/Skeleton';
 
-function KPICard({ label, value, icon: Icon, color, delay }) {
+/* ── Animated Number Counter ──────────────────────────────── */
+function AnimatedCounter({ value, format }) {
+  const ref = useRef(null);
+  const startRef = useRef(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (value === 0) return;
+    const start = startRef.current;
+    const end = value;
+    const duration = 900;
+    const startTime = performance.now();
+
+    const tick = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const current = start + (end - start) * eased;
+      if (ref.current) ref.current.textContent = format(current);
+      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
+      else startRef.current = end;
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value, format]);
+
+  return <span ref={ref}>{format(0)}</span>;
+}
+
+/* ── KPI Card ─────────────────────────────────────────────── */
+const kpiConfig = [
+  {
+    key: 'imoveis',
+    label: 'Total de Imóveis',
+    icon: Building2,
+    format: (v) => Math.round(v).toString(),
+    glowColor: 'rgba(99,102,241,0.20)',
+    iconGradient: 'linear-gradient(135deg, #6366F1, #818CF8)',
+    borderColor: 'rgba(99,102,241,0.20)',
+    trend: '+2 este mês',
+  },
+  {
+    key: 'clientes',
+    label: 'Total de Clientes',
+    icon: Users,
+    format: (v) => Math.round(v).toString(),
+    glowColor: 'rgba(168,85,247,0.18)',
+    iconGradient: 'linear-gradient(135deg, #A855F7, #C084FC)',
+    borderColor: 'rgba(168,85,247,0.20)',
+    trend: 'Cadastros ativos',
+  },
+  {
+    key: 'locacoesAtivas',
+    label: 'Locações Ativas',
+    icon: FileKey2,
+    format: (v) => Math.round(v).toString(),
+    glowColor: 'rgba(245,158,11,0.18)',
+    iconGradient: 'linear-gradient(135deg, #F59E0B, #FCD34D)',
+    borderColor: 'rgba(245,158,11,0.20)',
+    trend: 'Em andamento',
+  },
+  {
+    key: 'receitaMes',
+    label: 'Receita Recebida',
+    icon: DollarSign,
+    format: (v) =>
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v),
+    glowColor: 'rgba(20,184,166,0.18)',
+    iconGradient: 'linear-gradient(135deg, #14B8A6, #2DD4BF)',
+    borderColor: 'rgba(20,184,166,0.20)',
+    trend: 'Confirmada',
+  },
+];
+
+function KPICard({ config, value, index }) {
+  const { label, icon: Icon, glowColor, iconGradient, borderColor, trend, format } = config;
+
   return (
-    <div
-      className="bg-white rounded-xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5 animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        show:   { opacity: 1, y: 0 },
+      }}
+      whileHover={{ y: -3, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
+      className="relative overflow-hidden rounded-2xl p-6 cursor-default"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${borderColor}`,
+        backdropFilter: 'blur(16px)',
+      }}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-body font-medium text-slate-400 uppercase tracking-wider mb-2">
+      {/* Ambient glow orb */}
+      <div
+        className="absolute -top-8 -right-8 w-36 h-36 rounded-full blur-3xl pointer-events-none"
+        style={{ background: glowColor }}
+      />
+
+      <div className="relative z-10 flex items-start justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-body font-600 text-slate-500 uppercase tracking-widest mb-3">
             {label}
           </p>
-          <p className="font-display text-3xl font-800 text-slate-800">{value}</p>
+          <p className="font-display text-3xl font-800 text-white tabular-nums">
+            <AnimatedCounter value={value} format={format} />
+          </p>
+          <p className="text-[11px] text-slate-600 mt-2 font-body flex items-center gap-1">
+            <ArrowUpRight size={11} strokeWidth={2.5} className="text-accent-400" />
+            {trend}
+          </p>
         </div>
-        <div className={`p-3 rounded-xl ${color}`}>
-          <Icon size={22} strokeWidth={1.8} className="text-white" />
+
+        {/* Icon */}
+        <div
+          className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center"
+          style={{ background: iconGradient }}
+        >
+          <Icon size={20} strokeWidth={2} className="text-white" />
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+/* ── Custom Tooltip ───────────────────────────────────────── */
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const fmt = (v) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+  return (
+    <div
+      className="rounded-xl px-4 py-3 text-sm font-body"
+      style={{
+        background: '#1A2235',
+        border: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+      }}
+    >
+      <p className="text-slate-400 text-xs mb-2 font-semibold uppercase tracking-wide">{label}</p>
+      {payload.map((p) => (
+        <p key={p.name} style={{ color: p.fill }} className="font-medium">
+          {p.name}: {fmt(p.value)}
+        </p>
+      ))}
     </div>
   );
 }
 
-function formatCurrency(val) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+/* ── Skeleton Card ────────────────────────────────────────── */
+function GlassSkeletonCard() {
+  return (
+    <div
+      className="rounded-2xl p-6"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <div className="skeleton h-3 w-24 mb-4" />
+      <div className="skeleton h-8 w-32 mb-3" />
+      <div className="skeleton h-3 w-20" />
+    </div>
+  );
 }
 
-const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+/* ── Helpers ──────────────────────────────────────────────── */
+const NOMES_MES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+};
+
+/* ── Dashboard ────────────────────────────────────────────── */
 export default function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [kpis, setKpis] = useState({ imoveis: 0, clientes: 0, locacoesAtivas: 0, receitaMes: 0 });
+  const [loading, setLoading]   = useState(true);
+  const [kpis, setKpis]         = useState({ imoveis: 0, clientes: 0, locacoesAtivas: 0, receitaMes: 0 });
   const [chartData, setChartData] = useState([]);
-  const [ultimas, setUltimas] = useState([]);
+  const [ultimas, setUltimas]   = useState([]);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // F3: usa endpoints analiticos do backend (/financeiro/resumo e /financeiro/por-mes)
         const [imoveisRes, clientesRes, locacoesRes, resumoRes, porMesRes] = await Promise.all([
           api.get('/imoveis'),
           api.get('/clientes'),
@@ -49,27 +210,22 @@ export default function Dashboard() {
           api.get('/financeiro/por-mes', { params: { meses: 6 } }),
         ]);
 
-        const imoveis = imoveisRes.data;
-        const clientes = clientesRes.data;
         const locacoes = locacoesRes.data;
-        const resumo = resumoRes.data;
-        const porMes = porMesRes.data;
-
-        const locacoesAtivas = locacoes.filter((l) => l.ativa).length;
+        const resumo   = resumoRes.data;
+        const porMes   = porMesRes.data;
 
         setKpis({
-          imoveis: imoveis.length,
-          clientes: clientes.length,
-          locacoesAtivas,
-          receitaMes: resumo.receitas_recebidas,
+          imoveis:        imoveisRes.data.length,
+          clientes:       clientesRes.data.length,
+          locacoesAtivas: locacoes.filter((l) => l.ativa).length,
+          receitaMes:     resumo.receitas_recebidas,
         });
 
-        // Mapeia resposta da API ('YYYY-MM') para o formato do grafico
         setChartData(
           porMes.map((p) => {
             const [, m] = p.mes.split('-');
             return {
-              name: NOMES_MES[parseInt(m, 10) - 1],
+              name:    NOMES_MES[parseInt(m, 10) - 1],
               receita: p.receita,
               despesa: p.despesa,
             };
@@ -86,12 +242,18 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  const fmt = (v) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
   if (loading) {
     return (
       <div>
-        <h1 className="font-display text-2xl font-800 text-slate-800 mb-8">Dashboard</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+        <div className="mb-8">
+          <div className="skeleton h-7 w-48 mb-2 rounded-xl" />
+          <div className="skeleton h-4 w-72 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+          {[0, 1, 2, 3].map((i) => <GlassSkeletonCard key={i} />)}
         </div>
       </div>
     );
@@ -99,109 +261,179 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-800 text-slate-800 mb-8">Dashboard</h1>
+      {/* Page Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="mb-8"
+      >
+        <h1 className="font-display text-2xl font-800 text-white">
+          Visão <span className="gradient-text">Geral</span>
+        </h1>
+        <p className="text-sm text-slate-500 mt-1 font-body">
+          Resumo financeiro e operacional da plataforma
+        </p>
+      </motion.div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <KPICard label="Total de Imóveis" value={kpis.imoveis} icon={Building2} color="bg-brand-600" delay={0} />
-        <KPICard label="Total de Clientes" value={kpis.clientes} icon={Users} color="bg-indigo-500" delay={80} />
-        <KPICard label="Locações Ativas" value={kpis.locacoesAtivas} icon={FileKey2} color="bg-amber-500" delay={160} />
-        <KPICard
-          label="Receita Recebida"
-          value={formatCurrency(kpis.receitaMes)}
-          icon={DollarSign}
-          color="bg-emerald-500"
-          delay={240}
-        />
-      </div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6"
+      >
+        {kpiConfig.map((cfg, i) => (
+          <KPICard key={cfg.key} config={cfg} value={kpis[cfg.key]} index={i} />
+        ))}
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
         {/* Chart */}
-        <div
-          className="lg:col-span-2 bg-white rounded-xl p-6 shadow-card animate-fade-in-up"
-          style={{ animationDelay: '300ms' }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32, duration: 0.3 }}
+          className="lg:col-span-2 rounded-2xl p-6"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            backdropFilter: 'blur(16px)',
+          }}
         >
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp size={18} strokeWidth={1.8} className="text-brand-600" />
-            <h2 className="font-display text-base font-700 text-slate-700">Evolução Financeira</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #14B8A6)' }}
+              >
+                <TrendingUp size={15} strokeWidth={2.2} className="text-white" />
+              </div>
+              <div>
+                <h2 className="font-display text-sm font-700 text-white">Evolução Financeira</h2>
+                <p className="text-[11px] text-slate-600 font-body">Últimos 6 meses</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-[11px] text-slate-500 font-body">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-brand-500 inline-block" />Receita
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />Despesa
+              </span>
+            </div>
           </div>
+
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={chartData} barGap={4} barCategoryGap="30%">
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.05)"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94A3B8' }}
+                  tick={{ fontSize: 12, fill: '#4B5563', fontFamily: 'DM Sans' }}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94A3B8' }}
+                  tick={{ fontSize: 12, fill: '#4B5563', fontFamily: 'DM Sans' }}
                   tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                  width={52}
                 />
-                <Tooltip
-                  contentStyle={{
-                    background: '#0F172A',
-                    border: 'none',
-                    borderRadius: '10px',
-                    color: '#F8FAFC',
-                    fontSize: '13px',
-                  }}
-                  formatter={(value) => [formatCurrency(value)]}
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                <Bar
+                  dataKey="receita"
+                  fill="#6366F1"
+                  radius={[6, 6, 0, 0]}
+                  name="Receita"
+                  maxBarSize={32}
                 />
-                <Bar dataKey="receita" fill="#0D9488" radius={[6, 6, 0, 0]} name="Receita" />
-                <Bar dataKey="despesa" fill="#F43F5E" radius={[6, 6, 0, 0]} name="Despesa" />
+                <Bar
+                  dataKey="despesa"
+                  fill="#F43F5E"
+                  radius={[6, 6, 0, 0]}
+                  name="Despesa"
+                  maxBarSize={32}
+                />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[280px] text-slate-400 text-sm">
-              Sem dados financeiros
+            <div className="flex items-center justify-center h-[260px] text-slate-600 text-sm font-body">
+              Sem dados financeiros ainda
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Latest rentals */}
-        <div
-          className="bg-white rounded-xl p-6 shadow-card animate-fade-in-up"
-          style={{ animationDelay: '380ms' }}
+        {/* Latest Rentals */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.40, duration: 0.3 }}
+          className="rounded-2xl p-6 flex flex-col"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            backdropFilter: 'blur(16px)',
+          }}
         >
-          <h2 className="font-display text-base font-700 text-slate-700 mb-4">Últimas Locações</h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-display text-sm font-700 text-white">Últimas Locações</h2>
+            <span className="text-[10px] font-body text-slate-600 bg-white/5 px-2 py-1 rounded-full border border-white/8">
+              {ultimas.length} registros
+            </span>
+          </div>
+
           {ultimas.length === 0 ? (
-            <p className="text-sm text-slate-400 py-8 text-center">Nenhuma locação registrada</p>
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-slate-600 font-body">Nenhuma locação registrada</p>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-2 flex-1"
+            >
               {ultimas.map((loc) => (
-                <div
+                <motion.div
                   key={loc.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-surface hover:bg-surface-muted transition-colors"
+                  variants={{ hidden: { opacity: 0, x: 10 }, show: { opacity: 1, x: 0 } }}
+                  className="flex items-center justify-between p-3 rounded-xl transition-colors duration-150 cursor-default"
+                  style={{ background: 'rgba(255,255,255,0.03)' }}
+                  whileHover={{ background: 'rgba(255,255,255,0.06)' }}
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-slate-300 truncate">
                       {loc.imovel_titulo}
                     </p>
-                    <p className="text-xs text-slate-400">{loc.cliente_nome}</p>
+                    <p className="text-[11px] text-slate-600 font-body mt-0.5">{loc.cliente_nome}</p>
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
-                    <p className="text-sm font-semibold text-brand-700">
-                      {formatCurrency(loc.valor_mensal)}
+                    <p className="text-[13px] font-semibold text-accent-400">
+                      {fmt(loc.valor_mensal)}
                     </p>
                     <span
-                      className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                      className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 ${
                         loc.ativa
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : 'bg-slate-100 text-slate-400'
+                          ? 'bg-emerald-500/15 text-emerald-400'
+                          : 'bg-slate-700/40 text-slate-500'
                       }`}
                     >
                       {loc.ativa ? 'Ativa' : 'Encerrada'}
                     </span>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );

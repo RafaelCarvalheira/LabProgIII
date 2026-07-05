@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
 export default function Modal({ title, onClose, children, wide }) {
   useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handleEsc);
     document.body.style.overflow = 'hidden';
     return () => {
@@ -15,35 +14,55 @@ export default function Modal({ title, onClose, children, wide }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-overlay-in"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        {/* Overlay */}
+        <motion.div
+          className="absolute inset-0"
+          style={{ background: 'rgba(5,8,18,0.75)', backdropFilter: 'blur(6px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          onClick={onClose}
+        />
 
-      {/* Modal */}
-      <div
-        className={`relative bg-white rounded-2xl shadow-modal animate-modal-in ${
-          wide ? 'w-full max-w-2xl' : 'w-full max-w-lg'
-        } mx-4 max-h-[90vh] flex flex-col`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h2 className="font-display text-lg font-700 text-slate-800">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+        {/* Modal panel */}
+        <motion.div
+          className={`relative rounded-2xl flex flex-col overflow-hidden ${
+            wide ? 'w-full max-w-2xl' : 'w-full max-w-lg'
+          } mx-4 max-h-[90vh]`}
+          style={{
+            background: 'linear-gradient(145deg, #1A2235 0%, #141C2E 100%)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            boxShadow: '0 30px 70px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)',
+          }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1,    y: 0  }}
+          exit={{ opacity: 0, scale: 0.96, y: 8  }}
+          transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between px-6 py-5 border-b"
+            style={{ borderColor: 'rgba(255,255,255,0.07)' }}
           >
-            <X size={18} strokeWidth={2} />
-          </button>
-        </div>
+            <h2 className="font-display text-base font-700 text-white">{title}</h2>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 transition-colors"
+              style={{ background: 'rgba(255,255,255,0.05)' }}
+            >
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
 
-        {/* Body */}
-        <div className="px-7 py-5 overflow-y-auto flex-1">
-          {children}
-        </div>
+          {/* Body */}
+          <div className="px-6 py-5 overflow-y-auto flex-1 text-slate-300">
+            {children}
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

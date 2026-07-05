@@ -2,26 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design Tokens ──────────────────────────────────────────── */
 :root {
-  --brand-600: #0D9488;
-  --brand-700: #0F766E;
-  --brand-800: #115E59;
-  --sidebar-bg: #0F172A;
-  --sidebar-hover: #1E293B;
-  --surface: #F8FAFC;
-  --surface-card: #FFFFFF;
+  --bg-base:     #0B0F1A;
+  --bg-surface:  #111827;
+  --bg-elevated: #1A2235;
+  --border:      rgba(255, 255, 255, 0.08);
+  --brand:       #6366F1;
+  --accent:      #14B8A6;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* ── Reset ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
 
+/* ── Base ───────────────────────────────────────────────────── */
 body {
   font-family: 'DM Sans', sans-serif;
-  background-color: var(--surface);
-  color: #1E293B;
+  background-color: var(--bg-base);
+  color: #E2E8F0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -30,79 +29,108 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Background pattern */
+/* ── Main content — ambient gradient orbs ───────────────────── */
 .main-content {
-  background-image: radial-gradient(circle at 1px 1px, #e2e8f0 1px, transparent 0);
-  background-size: 32px 32px;
-  background-position: -1px -1px;
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 5% 5%,  rgba(99,102,241,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 45% at 95% 95%, rgba(20,184,166,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 50% 100%, rgba(99,102,241,0.04) 0%, transparent 50%);
+  min-height: 100vh;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+/* ── Glass utilities ────────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-/* Stagger animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.glass-md {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.4s ease-out forwards;
-  opacity: 0;
+/* ── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #1E2D40; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2D4060; }
+
+/* ── Form elements (dark override) ─────────────────────────── */
+input, select, textarea {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  color: #E2E8F0 !important;
+  border-radius: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input::placeholder, textarea::placeholder { color: #4B5563; }
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+select option { background-color: #1A2235; color: #E2E8F0; }
+
+/* ── Skeleton (dark) ────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1A2235 25%, #243044 50%, #1A2235 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 8px;
 }
 
-/* Modal animation */
+/* ── Modal animations ───────────────────────────────────────── */
 @keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
-
 .animate-modal-in {
-  animation: modalIn 0.2s ease-out forwards;
+  animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes overlayIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
-
 .animate-overlay-in {
   animation: overlayIn 0.2s ease-out forwards;
 }
 
-/* Skeleton pulse */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* ── Gradient text utility ──────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #818CF8 0%, #2DD4BF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.skeleton {
-  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 8px;
+/* ── Table rows ─────────────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; }
+th {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4B5563;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
+td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #CBD5E1;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255,255,255,0.025); }
