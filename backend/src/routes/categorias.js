@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const pool = require('../db/pool');
+const { requireAdmin } = require('../middleware/auth');
 
 const router = Router();
 
@@ -13,8 +14,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /categorias - criar nova categoria
-router.post('/', async (req, res) => {
+// POST /categorias - criar nova categoria (admin)
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { nome, descricao } = req.body;
     const result = await pool.query(
@@ -27,8 +28,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE /categorias/:id - remover categoria
-router.delete('/:id', async (req, res) => {
+// DELETE /categorias/:id - remover categoria (admin)
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(

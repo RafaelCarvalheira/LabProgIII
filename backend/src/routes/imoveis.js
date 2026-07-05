@@ -1,29 +1,41 @@
 const { Router } = require('express');
 const pool = require('../db/pool');
+const { requireAdmin } = require('../middleware/auth');
 
 const router = Router();
 
-// GET /imoveis - listar todos os imóveis
+// GET /imoveis - admin vê todos; cliente vê apenas os de suas locações
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM imoveis ORDER BY criado_em DESC'
-    );
+    let result;
+    if (req.user.papel === 'admin') {
+      result = await pool.query('SELECT * FROM imoveis ORDER BY criado_em DESC');
+    } else {
+      if (!req.user.cliente_id) {
+        return res.json([]);
+      }
+      result = await pool.query(
+        `SELECT DISTINCT i.*
+         FROM imoveis i
+         INNER JOIN locacoes l ON l.imovel_id = i.id
+         WHERE l.cliente_id = $1
+         ORDER BY i.criado_em DESC`,
+        [req.user.cliente_id]
+      );
+    }
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// GET /imoveis/disponibilidade - buscar imóveis disponíveis em um período
+// GET /imoveis/disponibilidade - público dentro da sessão autenticada
 router.get('/disponibilidade', async (req, res) => {
   try {
     const { data_inicio, data_fim } = req.query;
-
     if (!data_inicio || !data_fim) {
       return res.status(400).json({ erro: 'Parâmetros data_inicio e data_fim são obrigatórios' });
     }
-
     const result = await pool.query(
       `SELECT i.*,
         COALESCE(
@@ -47,18 +59,28 @@ router.get('/disponibilidade', async (req, res) => {
        ORDER BY i.criado_em DESC`,
       [data_inicio, data_fim]
     );
-
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// GET /imoveis/:id - buscar imóvel por ID
+// GET /imoveis/:id - admin vê qualquer; cliente vê apenas o seu
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM imoveis WHERE id = $1', [id]);
+    let result;
+    if (req.user.papel === 'admin') {
+      result = await pool.query('SELECT * FROM imoveis WHERE id = $1', [id]);
+    } else {
+      if (!req.user.cliente_id) return res.status(403).json({ erro: 'Acesso negado' });
+      result = await pool.query(
+        `SELECT DISTINCT i.* FROM imoveis i
+         INNER JOIN locacoes l ON l.imovel_id = i.id
+         WHERE i.id = $1 AND l.cliente_id = $2`,
+        [id, req.user.cliente_id]
+      );
+    }
     if (result.rows.length === 0) {
       return res.status(404).json({ erro: 'Imóvel não encontrado' });
     }
@@ -68,14 +90,13 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /imoveis - cadastrar novo imóvel
-router.post('/', async (req, res) => {
+// Mutações: somente admin
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const {
       titulo, descricao, endereco, cidade, estado, cep,
       valor_aluguel, valor_venda, area, quartos, banheiros, vagas_garagem,
     } = req.body;
-
     const result = await pool.query(
       `INSERT INTO imoveis
         (titulo, descricao, endereco, cidade, estado, cep,
@@ -91,22 +112,19 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /imoveis/:id - atualizar imóvel
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const {
       titulo, descricao, endereco, cidade, estado, cep,
       valor_aluguel, valor_venda, area, quartos, banheiros, vagas_garagem, disponivel,
     } = req.body;
-
     const result = await pool.query(
       `UPDATE imoveis SET
         titulo=$1, descricao=$2, endereco=$3, cidade=$4, estado=$5, cep=$6,
         valor_aluguel=$7, valor_venda=$8, area=$9, quartos=$10,
         banheiros=$11, vagas_garagem=$12, disponivel=$13
-       WHERE id=$14
-       RETURNING *`,
+       WHERE id=$14 RETURNING *`,
       [titulo, descricao, endereco, cidade, estado, cep,
        valor_aluguel, valor_venda, area, quartos, banheiros, vagas_garagem, disponivel, id]
     );
@@ -119,8 +137,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /imoveis/:id - remover imóvel
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM imoveis WHERE id=$1 RETURNING id', [id]);

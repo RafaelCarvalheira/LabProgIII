@@ -28,6 +28,10 @@ services:
       DB_NAME: rcp_data_imob
       DB_USER: admin
       DB_PASSWORD: admin123
+      JWT_SECRET: rcp-imob-jwt-secret-2026-change-in-production
+      ADMIN_EMAIL: marcell.parra.2002@gmail.com
+      ADMIN_PASSWORD: Admin@2026
+      ADMIN_NOME: Marcell Parra
     depends_on:
       db:
         condition: service_healthy

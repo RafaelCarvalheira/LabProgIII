@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS clientes (
     email VARCHAR(255),
     telefone VARCHAR(20),
     endereco VARCHAR(500),
+    usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

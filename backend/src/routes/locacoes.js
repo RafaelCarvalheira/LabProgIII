@@ -1,24 +1,35 @@
 const { Router } = require('express');
 const pool = require('../db/pool');
+const { requireAdmin } = require('../middleware/auth');
 
 const router = Router();
 
-// GET /locacoes - listar todas as locações
+// GET /locacoes - admin vê todas; cliente vê apenas as suas
 router.get('/', async (req, res) => {
   try {
     const { status } = req.query;
-    let query = `
+    const params = [];
+    const where = [];
+
+    if (req.user.papel !== 'admin') {
+      if (!req.user.cliente_id) return res.json([]);
+      params.push(req.user.cliente_id);
+      where.push(`l.cliente_id = $${params.length}`);
+    }
+
+    if (status) {
+      params.push(status);
+      where.push(`l.status = $${params.length}`);
+    }
+
+    const query = `
       SELECT l.*, i.titulo AS imovel_titulo, c.nome AS cliente_nome
       FROM locacoes l
       JOIN imoveis i ON i.id = l.imovel_id
       JOIN clientes c ON c.id = l.cliente_id
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+      ORDER BY l.criado_em DESC
     `;
-    const params = [];
-    if (status) {
-      params.push(status);
-      query += ` WHERE l.status = $1`;
-    }
-    query += ` ORDER BY l.criado_em DESC`;
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
@@ -26,7 +37,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /locacoes/:id - buscar locação por ID
+// GET /locacoes/:id
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -41,24 +52,26 @@ router.get('/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ erro: 'Locação não encontrada' });
     }
-    res.json(result.rows[0]);
+    const loc = result.rows[0];
+    if (req.user.papel !== 'admin' && loc.cliente_id !== req.user.cliente_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
+    res.json(loc);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// POST /locacoes - registrar nova locação
-router.post('/', async (req, res) => {
+// Mutações: somente admin
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status } = req.body;
-
-    // Verifica conflito de datas (só para confirmadas)
     const statusFinal = status || 'pendente';
+
     if (statusFinal === 'confirmada') {
       const conflito = await pool.query(
         `SELECT 1 FROM locacoes
-         WHERE imovel_id = $1
-           AND status = 'confirmada'
+         WHERE imovel_id = $1 AND status = 'confirmada'
            AND data_inicio <= $3
            AND (data_fim IS NULL OR data_fim >= $2)`,
         [imovel_id, data_inicio, data_fim || '9999-12-31']
@@ -68,14 +81,10 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Calcula valor total se datas informadas
     let valor_total = null;
     if (data_inicio && data_fim && valor_mensal) {
-      const inicio = new Date(data_inicio);
-      const fim = new Date(data_fim);
-      const dias = Math.max(1, Math.ceil((fim - inicio) / (1000 * 60 * 60 * 24)));
-      const meses = dias / 30;
-      valor_total = parseFloat(valor_mensal) * meses;
+      const dias = Math.max(1, Math.ceil((new Date(data_fim) - new Date(data_inicio)) / 86400000));
+      valor_total = parseFloat(valor_mensal) * (dias / 30);
     }
 
     const result = await pool.query(
@@ -89,25 +98,20 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /locacoes/:id - editar reserva com revalidação de disponibilidade
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status } = req.body;
 
-    // Busca locação atual
     const atual = await pool.query('SELECT * FROM locacoes WHERE id=$1', [id]);
     if (atual.rows.length === 0) {
       return res.status(404).json({ erro: 'Locação não encontrada' });
     }
 
-    // Revalida disponibilidade se confirmando ou mudando datas
     if (status === 'confirmada') {
       const conflito = await pool.query(
         `SELECT 1 FROM locacoes
-         WHERE imovel_id = $1
-           AND id != $2
-           AND status = 'confirmada'
+         WHERE imovel_id = $1 AND id != $2 AND status = 'confirmada'
            AND data_inicio <= $4
            AND (data_fim IS NULL OR data_fim >= $3)`,
         [imovel_id, id, data_inicio, data_fim || '9999-12-31']
@@ -117,19 +121,13 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Calcula valor total
     let valor_total = null;
     if (data_inicio && data_fim && valor_mensal) {
-      const inicio = new Date(data_inicio);
-      const fim = new Date(data_fim);
-      const dias = Math.max(1, Math.ceil((fim - inicio) / (1000 * 60 * 60 * 24)));
-      const meses = dias / 30;
-      valor_total = parseFloat(valor_mensal) * meses;
+      const dias = Math.max(1, Math.ceil((new Date(data_fim) - new Date(data_inicio)) / 86400000));
+      valor_total = parseFloat(valor_mensal) * (dias / 30);
     }
 
-    // ativa baseado no status
     const ativa = status !== 'cancelada';
-
     const result = await pool.query(
       `UPDATE locacoes SET
          imovel_id=$1, cliente_id=$2, data_inicio=$3, data_fim=$4,
@@ -143,8 +141,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PATCH /locacoes/:id/status - alterar status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -153,19 +150,14 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({ erro: 'Status inválido. Use: pendente, confirmada ou cancelada.' });
     }
 
-    // Se confirmando, verifica conflito
     if (status === 'confirmada') {
       const loc = await pool.query('SELECT * FROM locacoes WHERE id=$1', [id]);
       if (loc.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
       const { imovel_id, data_inicio, data_fim } = loc.rows[0];
-
       const conflito = await pool.query(
         `SELECT 1 FROM locacoes
-         WHERE imovel_id = $1
-           AND id != $2
-           AND status = 'confirmada'
-           AND data_inicio <= $4
-           AND (data_fim IS NULL OR data_fim >= $3)`,
+         WHERE imovel_id=$1 AND id!=$2 AND status='confirmada'
+           AND data_inicio<=$4 AND (data_fim IS NULL OR data_fim>=$3)`,
         [imovel_id, id, data_inicio, data_fim || '9999-12-31']
       );
       if (conflito.rows.length > 0) {
@@ -185,8 +177,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
-// PATCH /locacoes/:id/encerrar - encerrar locação (mantém compatibilidade)
-router.patch('/:id/encerrar', async (req, res) => {
+router.patch('/:id/encerrar', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(

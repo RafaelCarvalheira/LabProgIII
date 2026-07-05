@@ -1,22 +1,32 @@
 const { Router } = require('express');
 const pool = require('../db/pool');
+const { requireAdmin } = require('../middleware/auth');
 
 const router = Router();
 
-// GET /clientes - listar todos os clientes
+// GET /clientes - admin vê todos; cliente vê apenas a si mesmo
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM clientes ORDER BY criado_em DESC');
+    let result;
+    if (req.user.papel === 'admin') {
+      result = await pool.query('SELECT * FROM clientes ORDER BY criado_em DESC');
+    } else {
+      if (!req.user.cliente_id) return res.json([]);
+      result = await pool.query('SELECT * FROM clientes WHERE id = $1', [req.user.cliente_id]);
+    }
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-// GET /clientes/:id - buscar cliente por ID
+// GET /clientes/:id
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (req.user.papel !== 'admin' && parseInt(id) !== req.user.cliente_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
     const result = await pool.query('SELECT * FROM clientes WHERE id=$1', [id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ erro: 'Cliente não encontrado' });
@@ -27,8 +37,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /clientes - cadastrar novo cliente
-router.post('/', async (req, res) => {
+// Mutações: somente admin
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { nome, cpf, email, telefone, endereco } = req.body;
     const result = await pool.query(
@@ -42,8 +52,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /clientes/:id - atualizar cliente
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { nome, cpf, email, telefone, endereco } = req.body;
@@ -61,8 +70,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /clientes/:id - remover cliente
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM clientes WHERE id=$1 RETURNING id', [id]);
