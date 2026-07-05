@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const pool = require('./db/pool');
+const { runMigrations } = require('./db/migrate');
 
 async function seedAdmin() {
   const email = (process.env.ADMIN_EMAIL || 'marcell.parra.2002@gmail.com').toLowerCase();
@@ -23,4 +24,9 @@ async function seedAdmin() {
   }
 }
 
-module.exports = { seedAdmin };
+async function initializeDatabase() {
+  await runMigrations();
+  await seedAdmin();
+}
+
+module.exports = { seedAdmin, initializeDatabase };

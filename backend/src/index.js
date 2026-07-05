@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { seedAdmin } = require('./startup');
+const { initializeDatabase } = require('./startup');
 
 const statusRouter    = require('./routes/status');
 const authRouter      = require('./routes/auth');
@@ -30,5 +30,5 @@ app.use('/financeiro', requireAuth, financeiroRouter);
 
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Backend rodando na porta ${PORT}`);
-  await seedAdmin();
+  await initializeDatabase();
 });
