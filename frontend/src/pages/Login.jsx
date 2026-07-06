@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Building2, LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import RcpLogo from '../components/RcpLogo';
 
 export default function Login() {
   const { login } = useAuth();
@@ -89,28 +90,14 @@ export default function Login() {
           }}
         >
           {/* Logo */}
-          <div className="flex flex-col items-center mb-8">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.35 }}
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(20,184,166,0.15) 100%)',
-                border: '1px solid rgba(99,102,241,0.3)',
-                boxShadow: '0 0 24px rgba(99,102,241,0.2)',
-              }}
-            >
-              <Building2 size={26} className="text-brand-400" strokeWidth={1.8} />
-            </motion.div>
-
-            <h1 className="font-display text-2xl font-800 tracking-tight text-center">
-              <span className="gradient-text">RCP</span>
-              <span className="text-white"> Data Imob</span>
-            </h1>
-            <p className="text-slate-500 text-sm mt-1 font-body">Gestão Imobiliária</p>
-          </div>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.35 }}
+            className="flex justify-center mb-8"
+          >
+            <RcpLogo size={52} showText subtitle />
+          </motion.div>
 
           {/* Divider */}
           <div

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import RcpLogo from '../components/RcpLogo';
 import { useAuth } from '../context/AuthContext';
+import { useFilter } from '../context/FilterContext';
 import {
   BarChart,
   Bar,
@@ -198,10 +199,13 @@ const containerVariants = {
 /* ── Dashboard ────────────────────────────────────────────── */
 export default function Dashboard() {
   const { user, isAdmin } = useAuth();
-  const [loading, setLoading]   = useState(true);
-  const [kpis, setKpis]         = useState({ imoveis: 0, clientes: 0, locacoesAtivas: 0, receitaMes: 0 });
-  const [chartData, setChartData] = useState([]);
-  const [ultimas, setUltimas]   = useState([]);
+  const { clienteId, imovelIds } = useFilter() || {};
+  const [loading, setLoading]     = useState(true);
+  const [rawImoveis, setRawImoveis]   = useState([]);
+  const [rawClientes, setRawClientes] = useState([]);
+  const [rawLocacoes, setRawLocacoes] = useState([]);
+  const [resumo, setResumo]           = useState({ receitas_recebidas: 0 });
+  const [chartData, setChartData]     = useState([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -214,29 +218,16 @@ export default function Dashboard() {
           api.get('/financeiro/por-mes', { params: { meses: 6 } }),
         ]);
 
-        const locacoes = locacoesRes.data;
-        const resumo   = resumoRes.data;
-        const porMes   = porMesRes.data;
-
-        setKpis({
-          imoveis:        imoveisRes.data.length,
-          clientes:       clientesRes.data.length,
-          locacoesAtivas: locacoes.filter((l) => l.ativa).length,
-          receitaMes:     resumo.receitas_recebidas,
-        });
-
+        setRawImoveis(imoveisRes.data);
+        setRawClientes(clientesRes.data);
+        setRawLocacoes(locacoesRes.data);
+        setResumo(resumoRes.data);
         setChartData(
-          porMes.map((p) => {
+          porMesRes.data.map((p) => {
             const [, m] = p.mes.split('-');
-            return {
-              name:    NOMES_MES[parseInt(m, 10) - 1],
-              receita: p.receita,
-              despesa: p.despesa,
-            };
+            return { name: NOMES_MES[parseInt(m, 10) - 1], receita: p.receita, despesa: p.despesa };
           })
         );
-
-        setUltimas(locacoes.slice(0, 5));
       } catch (err) {
         console.error('Erro ao carregar dashboard:', err);
       } finally {
@@ -245,6 +236,20 @@ export default function Dashboard() {
     }
     fetchData();
   }, []);
+
+  const locacoesFiltradas = useMemo(
+    () => (clienteId ? rawLocacoes.filter((l) => l.cliente_id === clienteId) : rawLocacoes),
+    [rawLocacoes, clienteId]
+  );
+
+  const kpis = useMemo(() => ({
+    imoveis:        clienteId ? (imovelIds?.size ?? 0) : rawImoveis.length,
+    clientes:       clienteId ? 1 : rawClientes.length,
+    locacoesAtivas: locacoesFiltradas.filter((l) => l.ativa).length,
+    receitaMes:     resumo.receitas_recebidas,
+  }), [rawImoveis, rawClientes, locacoesFiltradas, resumo, clienteId, imovelIds]);
+
+  const ultimas = useMemo(() => locacoesFiltradas.slice(0, 5), [locacoesFiltradas]);
 
   const fmt = (v) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);

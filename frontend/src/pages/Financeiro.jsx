@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import api from '../api/axios';
+import { useFilter } from '../context/FilterContext';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
@@ -73,6 +74,7 @@ function PieTooltip({ active, payload }) {
 
 /* ── Main ─────────────────────────────────────────────────── */
 export default function Financeiro() {
+  const { locacaoIds } = useFilter() || {};
   const [registros, setRegistros] = useState([]);
   const [locacoes, setLocacoes]   = useState([]);
   const [resumo, setResumo]       = useState(null);
@@ -99,6 +101,11 @@ export default function Financeiro() {
   }, [filters]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const displayRegistros = useMemo(
+    () => (locacaoIds ? registros.filter((r) => locacaoIds.has(r.locacao_id)) : registros),
+    [registros, locacaoIds]
+  );
 
   const pieData = useMemo(() => {
     if (!resumo) return [];
@@ -272,7 +279,7 @@ export default function Financeiro() {
       )}
 
       {/* Table */}
-      {registros.length === 0 ? (
+      {displayRegistros.length === 0 ? (
         <EmptyState message="Nenhum lançamento encontrado" icon={DollarSign} />
       ) : (
         <motion.div
@@ -296,7 +303,7 @@ export default function Financeiro() {
                 </tr>
               </thead>
               <tbody>
-                {registros.map((reg) => (
+                {displayRegistros.map((reg) => (
                   <tr key={reg.id}>
                     <td>
                       <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${reg.tipo === 'receita' ? 'text-emerald-400' : 'text-rose-400'}`}>

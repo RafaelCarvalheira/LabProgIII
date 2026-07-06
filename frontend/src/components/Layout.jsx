@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import RcpLogo from './RcpLogo';
+import { FilterProvider } from '../context/FilterContext';
+import ClienteFilterBar from './ClienteFilterBar';
 
 const ADMIN_NAV = [
   { to: '/',                label: 'Dashboard',       icon: LayoutDashboard },
@@ -54,6 +56,7 @@ export default function Layout() {
   }
 
   return (
+    <FilterProvider>
     <div className="flex min-h-screen">
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <motion.aside
@@ -271,6 +274,9 @@ export default function Layout() {
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
         className="flex-1 main-content min-h-screen"
       >
+        <div className="max-w-[1320px] mx-auto px-8 pt-8">
+          <ClienteFilterBar />
+        </div>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -278,12 +284,13 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="max-w-[1320px] mx-auto px-8 py-8"
+            className="max-w-[1320px] mx-auto px-8 pb-8"
           >
             <Outlet />
           </motion.div>
         </AnimatePresence>
       </motion.main>
     </div>
+    </FilterProvider>
   );
 }

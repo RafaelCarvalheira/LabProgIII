@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, FileKey2, XCircle, Pencil, CheckCircle2, Clock, Ban } from 'lucide-react';
 import api from '../api/axios';
+import { useFilter } from '../context/FilterContext';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import { SkeletonTable } from '../components/Skeleton';
@@ -44,6 +45,7 @@ const btnPrimary = 'inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medi
 const btnGhost   = 'px-5 py-2.5 text-sm font-medium text-slate-400 rounded-xl transition-colors hover:text-slate-200';
 
 export default function Locacoes() {
+  const { clienteId } = useFilter() || {};
   const [locacoes, setLocacoes] = useState([]);
   const [imoveis, setImoveis]   = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -69,7 +71,11 @@ export default function Locacoes() {
 
   useEffect(() => { fetchAll(); }, []);
 
-  const filtered = filterStatus ? locacoes.filter((l) => l.status === filterStatus) : locacoes;
+  const filtered = useMemo(() => locacoes.filter((l) => {
+    if (clienteId && l.cliente_id !== clienteId) return false;
+    if (filterStatus && l.status !== filterStatus) return false;
+    return true;
+  }), [locacoes, clienteId, filterStatus]);
 
   function openNew() { setEditing(null); setForm(emptyForm); setError(''); setModalOpen(true); }
   function openEdit(loc) {

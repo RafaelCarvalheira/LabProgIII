@@ -5,6 +5,7 @@ import {
   MapPin, BedDouble, Bath, Car, Ruler, Building2,
 } from 'lucide-react';
 import api from '../api/axios';
+import { useFilter } from '../context/FilterContext';
 import Modal from '../components/Modal';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
@@ -36,6 +37,7 @@ const cardVariants = {
 };
 
 export default function Imoveis() {
+  const { imovelIds } = useFilter() || {};
   const [imoveis, setImoveis]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [modalOpen, setModalOpen]   = useState(false);
@@ -63,13 +65,14 @@ export default function Imoveis() {
 
   const filtered = useMemo(() => {
     return imoveis.filter((i) => {
+      if (imovelIds && !imovelIds.has(i.id)) return false;
       if (search && !i.titulo.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterCidade && i.cidade !== filterCidade) return false;
       if (filterStatus === 'disponivel'   && !i.disponivel) return false;
       if (filterStatus === 'indisponivel' &&  i.disponivel) return false;
       return true;
     });
-  }, [imoveis, search, filterCidade, filterStatus]);
+  }, [imoveis, imovelIds, search, filterCidade, filterStatus]);
 
   function openNew() { setEditing(null); setForm(emptyForm); setError(''); setModalOpen(true); }
   function openEdit(im) {
