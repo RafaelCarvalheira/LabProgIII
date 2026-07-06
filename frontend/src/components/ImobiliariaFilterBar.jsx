@@ -4,18 +4,18 @@ import { ChevronLeft, ChevronRight, X, Building2 } from 'lucide-react';
 import { useFilter } from '../context/FilterContext';
 import { useAuth } from '../context/AuthContext';
 
-export default function ClienteFilterBar() {
-  const { isAdmin } = useAuth();
-  const { clienteId, setClienteId, clientes } = useFilter() || {};
+export default function ImobiliariaFilterBar() {
+  const { isSuperAdmin } = useAuth();
+  const { imobiliariaId, setImobiliariaId, imobiliarias } = useFilter() || {};
   const scrollRef = useRef(null);
 
-  if (!isAdmin || !clientes?.length) return null;
+  if (!isSuperAdmin || !imobiliarias?.length) return null;
 
   function scroll(dir) {
     if (scrollRef.current) scrollRef.current.scrollLeft += dir * 220;
   }
 
-  const selectedCliente = clientes.find((c) => c.id === clienteId);
+  const selecionada = imobiliarias.find((i) => i.id === imobiliariaId);
 
   return (
     <div className="mb-6">
@@ -26,12 +26,12 @@ export default function ClienteFilterBar() {
           Filtrar por Imobiliária
         </p>
         <AnimatePresence>
-          {clienteId && (
+          {imobiliariaId && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              onClick={() => setClienteId(null)}
+              onClick={() => setImobiliariaId(null)}
               className="flex items-center gap-1 text-[11px] font-body text-rose-400 hover:text-rose-300
                          transition-colors px-2 py-0.5 rounded-lg"
               style={{ background: 'rgba(239,68,68,0.08)' }}
@@ -63,11 +63,11 @@ export default function ClienteFilterBar() {
         >
           {/* "Todas" pill */}
           <button
-            onClick={() => setClienteId(null)}
+            onClick={() => setImobiliariaId(null)}
             className="flex-shrink-0 flex items-center gap-2 px-3.5 py-1.5 rounded-full
                        text-xs font-body font-medium transition-all duration-150 whitespace-nowrap"
             style={
-              !clienteId
+              !imobiliariaId
                 ? {
                     background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(20,184,166,0.15))',
                     border: '1px solid rgba(99,102,241,0.35)',
@@ -83,7 +83,7 @@ export default function ClienteFilterBar() {
           >
             <span
               className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
-              style={{ background: !clienteId ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)' }}
+              style={{ background: !imobiliariaId ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)' }}
             >
               ∞
             </span>
@@ -92,18 +92,18 @@ export default function ClienteFilterBar() {
               className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
               style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}
             >
-              {clientes.length}
+              {imobiliarias.length}
             </span>
           </button>
 
-          {/* One pill per cliente */}
-          {clientes.map((c) => {
-            const isActive = clienteId === c.id;
-            const initial = (c.nome || '?')[0].toUpperCase();
+          {/* One pill per imobiliária */}
+          {imobiliarias.map((i) => {
+            const isActive = imobiliariaId === i.id;
+            const initial = (i.nome || '?')[0].toUpperCase();
             return (
               <button
-                key={c.id}
-                onClick={() => setClienteId(isActive ? null : c.id)}
+                key={i.id}
+                onClick={() => setImobiliariaId(isActive ? null : i.id)}
                 className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full
                            text-xs font-body font-medium transition-all duration-150 whitespace-nowrap"
                 style={
@@ -133,7 +133,7 @@ export default function ClienteFilterBar() {
                 >
                   {initial}
                 </span>
-                <span className="max-w-[120px] truncate">{c.nome}</span>
+                <span className="max-w-[120px] truncate">{i.nome}</span>
               </button>
             );
           })}
@@ -152,7 +152,7 @@ export default function ClienteFilterBar() {
 
       {/* Active filter indicator */}
       <AnimatePresence>
-        {selectedCliente && (
+        {selecionada && (
           <motion.div
             initial={{ opacity: 0, height: 0, marginTop: 0 }}
             animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
@@ -165,7 +165,7 @@ export default function ClienteFilterBar() {
             >
               <Building2 size={11} strokeWidth={2} className="text-indigo-400" />
               Exibindo dados de:
-              <span className="font-semibold text-indigo-200">{selectedCliente.nome}</span>
+              <span className="font-semibold text-indigo-200">{selecionada.nome}</span>
             </div>
           </motion.div>
         )}

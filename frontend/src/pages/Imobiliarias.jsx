@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Pencil, Trash2, Users } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Building2 } from 'lucide-react';
 import api from '../api/axios';
-import { useFilter } from '../context/FilterContext';
-import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
@@ -12,18 +10,16 @@ import { useToast } from '../components/Toast';
 
 const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' };
 
-const emptyForm = { nome: '', cpf: '', email: '', telefone: '', endereco: '', imobiliaria_id: '' };
+const emptyForm = { nome: '', cnpj: '', email: '', telefone: '' };
 
-const label    = 'block text-xs font-medium text-slate-500 mb-1.5';
+const label     = 'block text-xs font-medium text-slate-500 mb-1.5';
 const inputBase = 'w-full px-4 py-2.5 rounded-xl text-sm font-body';
 const btnPrimary = 'inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white rounded-xl transition-all duration-150 disabled:opacity-50';
 const btnGhost   = 'px-5 py-2.5 text-sm font-medium text-slate-400 rounded-xl transition-colors hover:text-slate-200';
 
-export default function Clientes() {
-  const { clienteIds, imobiliariaId, imobiliarias } = useFilter() || {};
-  const { isSuperAdmin } = useAuth();
+export default function Imobiliarias() {
   const toast = useToast();
-  const [clientes, setClientes] = useState([]);
+  const [imobiliarias, setImobiliarias] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing]   = useState(null);
@@ -34,49 +30,35 @@ export default function Clientes() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  async function fetchClientes() {
-    try { const res = await api.get('/clientes'); setClientes(res.data); }
-    catch { setError('Erro ao carregar clientes'); }
+  async function fetchImobiliarias() {
+    try { const res = await api.get('/imobiliarias'); setImobiliarias(res.data); }
+    catch { setError('Erro ao carregar imobiliárias'); }
     finally { setLoading(false); }
   }
 
-  useEffect(() => { fetchClientes(); }, []);
+  useEffect(() => { fetchImobiliarias(); }, []);
 
   const filtered = useMemo(() => {
-    return clientes.filter((c) => {
-      if (clienteIds && !clienteIds.has(c.id)) return false;
-      if (search && !c.nome.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [clientes, clienteIds, search]);
+    if (!search) return imobiliarias;
+    const q = search.toLowerCase();
+    return imobiliarias.filter((i) => i.nome.toLowerCase().includes(q));
+  }, [imobiliarias, search]);
 
-  function openNew() {
-    setEditing(null);
-    setForm({ ...emptyForm, imobiliaria_id: imobiliariaId || '' });
-    setError(''); setModalOpen(true);
-  }
-  function openEdit(c) {
-    setEditing(c);
-    setForm({
-      nome: c.nome || '', cpf: c.cpf || '', email: c.email || '', telefone: c.telefone || '',
-      endereco: c.endereco || '', imobiliaria_id: c.imobiliaria_id || '',
-    });
+  function openNew() { setEditing(null); setForm(emptyForm); setError(''); setModalOpen(true); }
+  function openEdit(i) {
+    setEditing(i);
+    setForm({ nome: i.nome || '', cnpj: i.cnpj || '', email: i.email || '', telefone: i.telefone || '' });
     setError(''); setModalOpen(true);
   }
 
   async function handleSubmit(e) {
     e.preventDefault(); setSaving(true); setError('');
-    if (isSuperAdmin && !form.imobiliaria_id) {
-      setError('Selecione a imobiliária responsável pelo cliente.');
-      setSaving(false);
-      return;
-    }
     try {
-      if (editing) await api.put(`/clientes/${editing.id}`, form);
-      else          await api.post('/clientes', form);
-      setModalOpen(false); fetchClientes();
-      toast.success(editing ? 'Cliente atualizado!' : 'Cliente cadastrado!');
-    } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar cliente'); }
+      if (editing) await api.put(`/imobiliarias/${editing.id}`, form);
+      else          await api.post('/imobiliarias', form);
+      setModalOpen(false); fetchImobiliarias();
+      toast.success(editing ? 'Imobiliária atualizada!' : 'Imobiliária cadastrada!');
+    } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar imobiliária'); }
     finally       { setSaving(false); }
   }
 
@@ -84,12 +66,12 @@ export default function Clientes() {
     if (!confirmDelete) return;
     setDeleting(true);
     try {
-      await api.delete(`/clientes/${confirmDelete.id}`);
+      await api.delete(`/imobiliarias/${confirmDelete.id}`);
       setConfirmDelete(null);
-      fetchClientes();
-      toast.success('Cliente excluído.');
+      fetchImobiliarias();
+      toast.success('Imobiliária excluída.');
     } catch (err) {
-      toast.error(err.response?.data?.erro || 'Erro ao excluir cliente');
+      toast.error(err.response?.data?.erro || 'Erro ao excluir imobiliária');
     } finally { setDeleting(false); }
   }
 
@@ -109,15 +91,17 @@ export default function Clientes() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-display text-2xl font-800 text-white">Clientes</h1>
-          <p className="text-sm text-slate-500 mt-0.5 font-body">{clientes.length} clientes cadastrados</p>
+          <h1 className="font-display text-2xl font-800 text-white">Imobiliárias</h1>
+          <p className="text-sm text-slate-500 mt-0.5 font-body">
+            {imobiliarias.length} imobiliárias cadastradas — seus clientes na plataforma
+          </p>
         </div>
         <button
           onClick={openNew}
           className={btnPrimary}
           style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', boxShadow: '0 4px 14px rgba(99,102,241,0.3)' }}
         >
-          <Plus size={17} strokeWidth={2} /> Novo Cliente
+          <Plus size={17} strokeWidth={2} /> Nova Imobiliária
         </button>
       </div>
 
@@ -142,9 +126,9 @@ export default function Clientes() {
       {/* Table */}
       {filtered.length === 0 ? (
         <EmptyState
-          message="Nenhum cliente encontrado"
-          icon={Users}
-          actionLabel="Novo Cliente"
+          message="Nenhuma imobiliária encontrada"
+          icon={Building2}
+          actionLabel="Nova Imobiliária"
           onAction={openNew}
         />
       ) : (
@@ -160,31 +144,31 @@ export default function Clientes() {
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>CPF</th>
+                  <th>CNPJ</th>
                   <th>Email</th>
                   <th>Telefone</th>
                   <th style={{ textAlign: 'right' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
-                  <tr key={c.id}>
-                    <td className="font-medium text-slate-200">{c.nome}</td>
-                    <td className="font-mono text-slate-400">{c.cpf}</td>
-                    <td className="text-slate-400">{c.email}</td>
-                    <td className="text-slate-400">{c.telefone}</td>
+                {filtered.map((i) => (
+                  <tr key={i.id}>
+                    <td className="font-medium text-slate-200">{i.nome}</td>
+                    <td className="font-mono text-slate-400">{i.cnpj || '—'}</td>
+                    <td className="text-slate-400">{i.email || '—'}</td>
+                    <td className="text-slate-400">{i.telefone || '—'}</td>
                     <td style={{ textAlign: 'right' }}>
                       <div className="inline-flex gap-1">
                         <button
-                          onClick={() => openEdit(c)}
-                          aria-label={`Editar ${c.nome}`}
+                          onClick={() => openEdit(i)}
+                          aria-label={`Editar ${i.nome}`}
                           className="p-2 rounded-lg text-slate-600 hover:text-slate-200 hover:bg-white/10 transition-colors"
                         >
                           <Pencil size={14} strokeWidth={1.8} />
                         </button>
                         <button
-                          onClick={() => setConfirmDelete(c)}
-                          aria-label={`Excluir ${c.nome}`}
+                          onClick={() => setConfirmDelete(i)}
+                          aria-label={`Excluir ${i.nome}`}
                           className="p-2 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         >
                           <Trash2 size={14} strokeWidth={1.8} />
@@ -200,34 +184,18 @@ export default function Clientes() {
       )}
 
       {/* Modal */}
-      <Modal open={modalOpen} title={editing ? 'Editar Cliente' : 'Novo Cliente'} onClose={() => setModalOpen(false)}>
+      <Modal open={modalOpen} title={editing ? 'Editar Imobiliária' : 'Nova Imobiliária'} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>
-            )}
-            {isSuperAdmin && (
-              <div>
-                <label className={label}>Imobiliária *</label>
-                <select
-                  required
-                  value={form.imobiliaria_id}
-                  onChange={(e) => handleChange('imobiliaria_id', e.target.value)}
-                  className={`${inputBase} px-4`}
-                >
-                  <option value="">Selecione...</option>
-                  {imobiliarias?.map((i) => (
-                    <option key={i.id} value={i.id}>{i.nome}</option>
-                  ))}
-                </select>
-              </div>
             )}
             <div>
               <label className={label}>Nome *</label>
               <input required value={form.nome} onChange={(e) => handleChange('nome', e.target.value)} className={inputBase} />
             </div>
             <div>
-              <label className={label}>CPF</label>
-              <input value={form.cpf} onChange={(e) => handleChange('cpf', e.target.value)} placeholder="000.000.000-00" className={inputBase} />
+              <label className={label}>CNPJ</label>
+              <input value={form.cnpj} onChange={(e) => handleChange('cnpj', e.target.value)} placeholder="00.000.000/0000-00" className={inputBase} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -238,10 +206,6 @@ export default function Clientes() {
                 <label className={label}>Telefone</label>
                 <input value={form.telefone} onChange={(e) => handleChange('telefone', e.target.value)} className={inputBase} />
               </div>
-            </div>
-            <div>
-              <label className={label}>Endereço</label>
-              <input value={form.endereco} onChange={(e) => handleChange('endereco', e.target.value)} className={inputBase} />
             </div>
             <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
               <button type="button" onClick={() => setModalOpen(false)} className={btnGhost} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -257,11 +221,11 @@ export default function Clientes() {
       {/* Confirmar exclusão */}
       <ConfirmDialog
         open={!!confirmDelete}
-        title="Excluir cliente?"
+        title="Excluir imobiliária?"
         message={
           <>
-            <strong className="text-slate-300">{confirmDelete?.nome}</strong> será removido
-            permanentemente. Esta ação não pode ser desfeita.
+            <strong className="text-slate-300">{confirmDelete?.nome}</strong> só pode ser removida
+            se não houver imóveis ou clientes vinculados a ela.
           </>
         }
         loading={deleting}

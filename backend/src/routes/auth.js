@@ -38,6 +38,7 @@ router.post('/login', async (req, res) => {
       email: user.email,
       papel: user.papel,
       cliente_id: user.cliente_id || null,
+      imobiliaria_id: user.imobiliaria_id || null,
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });

@@ -14,6 +14,7 @@ const Financeiro = lazy(() => import('./pages/Financeiro'));
 const Disponibilidade = lazy(() => import('./pages/Disponibilidade'));
 const Calendario = lazy(() => import('./pages/Calendario'));
 const Usuarios = lazy(() => import('./pages/Usuarios'));
+const Imobiliarias = lazy(() => import('./pages/Imobiliarias'));
 
 function PageLoader() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/disponibilidade"  element={<Disponibilidade />} />
             <Route path="/calendario"       element={<Calendario />} />
             <Route path="/usuarios"         element={<Usuarios />} />
+            <Route path="/imobiliarias"     element={<Imobiliarias />} />
           </Route>
 
           {/* Fallback */}

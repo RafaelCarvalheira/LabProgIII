@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const pool = require('../db/pool');
-const { requireAdmin } = require('../middleware/auth');
+const { requireManager } = require('../middleware/auth');
 
 const router = Router();
 
@@ -11,14 +11,34 @@ async function atualizarAtrasados() {
   );
 }
 
-// Helper: cláusula WHERE de RLS para cliente
-function rlsCliente(clienteId, params) {
-  params.push(clienteId);
-  return `f.locacao_id IN (
-    SELECT l.id FROM locacoes l
-    INNER JOIN clientes c ON c.id = l.cliente_id
-    WHERE c.id = $${params.length}
-  )`;
+// Monta a cláusula WHERE de escopo (cliente self-service, tenant da imobiliária,
+// ou filtro opcional de admin), empilhando o parâmetro em `params`.
+function scopeClause(req, params, query) {
+  if (req.user.papel === 'usuario') {
+    if (!req.user.cliente_id) return { empty: true };
+    params.push(req.user.cliente_id);
+    return { clause: `f.locacao_id IN (SELECT id FROM locacoes WHERE cliente_id = $${params.length})` };
+  }
+  if (req.user.papel === 'imobiliaria') {
+    params.push(req.user.imobiliaria_id);
+    return {
+      clause: `f.locacao_id IN (
+        SELECT l.id FROM locacoes l JOIN imoveis i ON i.id = l.imovel_id
+        WHERE i.imobiliaria_id = $${params.length}
+      )`,
+    };
+  }
+  // admin
+  if (query?.imobiliaria_id) {
+    params.push(query.imobiliaria_id);
+    return {
+      clause: `f.locacao_id IN (
+        SELECT l.id FROM locacoes l JOIN imoveis i ON i.id = l.imovel_id
+        WHERE i.imobiliaria_id = $${params.length}
+      )`,
+    };
+  }
+  return {};
 }
 
 // GET /financeiro/resumo
@@ -26,20 +46,14 @@ router.get('/resumo', async (req, res) => {
   try {
     await atualizarAtrasados();
     const params = [];
-    let whereClause = '';
+    const { empty, clause } = scopeClause(req, params, req.query);
 
-    if (req.user.papel !== 'admin') {
-      if (!req.user.cliente_id) {
-        return res.json({
-          total_receitas: 0, total_despesas: 0, receitas_recebidas: 0,
-          despesas_pagas: 0, total_pendente: 0, total_atrasado: 0,
-          saldo: 0, qtd_pendente: 0, qtd_atrasado: 0, qtd_pago: 0, qtd_total: 0,
-        });
-      }
-      whereClause = `WHERE f.locacao_id IN (
-        SELECT id FROM locacoes WHERE cliente_id = $1
-      )`;
-      params.push(req.user.cliente_id);
+    if (empty) {
+      return res.json({
+        total_receitas: 0, total_despesas: 0, receitas_recebidas: 0,
+        despesas_pagas: 0, total_pendente: 0, total_atrasado: 0,
+        saldo: 0, qtd_pendente: 0, qtd_atrasado: 0, qtd_pago: 0, qtd_total: 0,
+      });
     }
 
     const result = await pool.query(`
@@ -55,7 +69,7 @@ router.get('/resumo', async (req, res) => {
         COUNT(*) FILTER (WHERE status = 'pago')     AS qtd_pago,
         COUNT(*)                                     AS qtd_total
       FROM financeiro f
-      ${whereClause}
+      ${clause ? 'WHERE ' + clause : ''}
     `, params);
 
     const r = result.rows[0];
@@ -82,13 +96,9 @@ router.get('/por-mes', async (req, res) => {
   try {
     const meses = Math.max(1, Math.min(parseInt(req.query.meses, 10) || 6, 24));
     const params = [meses];
-    let whereClause = '';
+    const { empty, clause } = scopeClause(req, params, req.query);
 
-    if (req.user.papel !== 'admin') {
-      if (!req.user.cliente_id) return res.json([]);
-      params.push(req.user.cliente_id);
-      whereClause = `AND f.locacao_id IN (SELECT id FROM locacoes WHERE cliente_id = $${params.length})`;
-    }
+    if (empty) return res.json([]);
 
     const result = await pool.query(
       `SELECT
@@ -97,7 +107,7 @@ router.get('/por-mes', async (req, res) => {
          COALESCE(SUM(CASE WHEN tipo = 'despesa' THEN valor END), 0) AS despesa
        FROM financeiro f
        WHERE data_vencimento >= date_trunc('month', CURRENT_DATE) - ($1::int - 1) * INTERVAL '1 month'
-       ${whereClause}
+       ${clause ? 'AND ' + clause : ''}
        GROUP BY 1 ORDER BY 1`,
       params
     );
@@ -119,11 +129,9 @@ router.get('/', async (req, res) => {
     const where = [];
     const params = [];
 
-    if (req.user.papel !== 'admin') {
-      if (!req.user.cliente_id) return res.json([]);
-      params.push(req.user.cliente_id);
-      where.push(`f.locacao_id IN (SELECT id FROM locacoes WHERE cliente_id = $${params.length})`);
-    }
+    const { empty, clause } = scopeClause(req, params, req.query);
+    if (empty) return res.json([]);
+    if (clause) where.push(clause);
 
     if (tipo)        { params.push(tipo);        where.push(`f.tipo = $${params.length}`); }
     if (status)      { params.push(status);      where.push(`f.status = $${params.length}`); }
@@ -155,7 +163,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT f.*, i.titulo AS imovel_titulo, c.nome AS cliente_nome
+      `SELECT f.*, i.titulo AS imovel_titulo, i.imobiliaria_id, c.nome AS cliente_nome
          FROM financeiro f
          LEFT JOIN locacoes l ON l.id = f.locacao_id
          LEFT JOIN imoveis  i ON i.id = l.imovel_id
@@ -167,13 +175,15 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ erro: 'Lançamento não encontrado' });
     }
     const reg = result.rows[0];
-    // Cliente só vê seu próprio
-    if (req.user.papel !== 'admin' && reg.locacao_id) {
+    if (req.user.papel === 'usuario' && reg.locacao_id) {
       const check = await pool.query(
         'SELECT 1 FROM locacoes WHERE id = $1 AND cliente_id = $2',
         [reg.locacao_id, req.user.cliente_id]
       );
       if (check.rows.length === 0) return res.status(403).json({ erro: 'Acesso negado' });
+    }
+    if (req.user.papel === 'imobiliaria' && reg.imobiliaria_id !== req.user.imobiliaria_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
     }
     res.json(reg);
   } catch (err) {
@@ -181,12 +191,25 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Mutações: somente admin
-router.post('/', requireAdmin, async (req, res) => {
+// Checa se uma locação pertence à imobiliária informada (uso nas mutações)
+async function locacaoPertenceA(locacaoId, imobiliariaId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM locacoes l JOIN imoveis i ON i.id = l.imovel_id
+     WHERE l.id = $1 AND i.imobiliaria_id = $2`,
+    [locacaoId, imobiliariaId]
+  );
+  return rows.length > 0;
+}
+
+// Mutações: admin (qualquer imobiliária) ou imobiliaria (só a própria)
+router.post('/', requireManager, async (req, res) => {
   try {
     const { locacao_id, tipo, valor, data_vencimento, descricao, status } = req.body;
     if (!locacao_id || !tipo || valor == null || !data_vencimento) {
       return res.status(400).json({ erro: 'Campos obrigatórios: locacao_id, tipo, valor, data_vencimento' });
+    }
+    if (req.user.papel === 'imobiliaria' && !(await locacaoPertenceA(locacao_id, req.user.imobiliaria_id))) {
+      return res.status(403).json({ erro: 'Acesso negado' });
     }
     let statusInicial = status || 'pendente';
     if (!status && new Date(data_vencimento) < new Date(new Date().toDateString())) {
@@ -203,13 +226,19 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/:id', requireAdmin, async (req, res) => {
+router.put('/:id', requireManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { locacao_id, tipo, valor, data_vencimento, descricao, status, data_pagamento } = req.body;
     const exist = await pool.query('SELECT * FROM financeiro WHERE id = $1', [id]);
     if (exist.rows.length === 0) {
       return res.status(404).json({ erro: 'Lançamento não encontrado' });
+    }
+    if (req.user.papel === 'imobiliaria') {
+      if (!(await locacaoPertenceA(exist.rows[0].locacao_id, req.user.imobiliaria_id))
+          || !(await locacaoPertenceA(locacao_id, req.user.imobiliaria_id))) {
+        return res.status(403).json({ erro: 'Acesso negado' });
+      }
     }
     const novoStatus  = status || exist.rows[0].status;
     const novaDataPag = novoStatus === 'pago'
@@ -228,29 +257,33 @@ router.put('/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.patch('/:id/pagar', requireAdmin, async (req, res) => {
+router.patch('/:id/pagar', requireManager, async (req, res) => {
   try {
     const { id } = req.params;
+    const exist = await pool.query('SELECT locacao_id FROM financeiro WHERE id = $1', [id]);
+    if (exist.rows.length === 0) return res.status(404).json({ erro: 'Registro não encontrado' });
+    if (req.user.papel === 'imobiliaria' && !(await locacaoPertenceA(exist.rows[0].locacao_id, req.user.imobiliaria_id))) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
     const result = await pool.query(
       `UPDATE financeiro SET status='pago', data_pagamento=CURRENT_DATE WHERE id=$1 RETURNING *`,
       [id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ erro: 'Registro não encontrado' });
-    }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-router.delete('/:id', requireAdmin, async (req, res) => {
+router.delete('/:id', requireManager, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('DELETE FROM financeiro WHERE id=$1 RETURNING *', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ erro: 'Lançamento não encontrado' });
+    const exist = await pool.query('SELECT locacao_id FROM financeiro WHERE id = $1', [id]);
+    if (exist.rows.length === 0) return res.status(404).json({ erro: 'Lançamento não encontrado' });
+    if (req.user.papel === 'imobiliaria' && !(await locacaoPertenceA(exist.rows[0].locacao_id, req.user.imobiliaria_id))) {
+      return res.status(403).json({ erro: 'Acesso negado' });
     }
+    const result = await pool.query('DELETE FROM financeiro WHERE id=$1 RETURNING *', [id]);
     res.json({ mensagem: 'Lançamento removido', registro: result.rows[0] });
   } catch (err) {
     res.status(500).json({ erro: err.message });

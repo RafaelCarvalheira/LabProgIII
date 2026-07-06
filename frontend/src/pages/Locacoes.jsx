@@ -46,7 +46,7 @@ const btnPrimary = 'inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medi
 const btnGhost   = 'px-5 py-2.5 text-sm font-medium text-slate-400 rounded-xl transition-colors hover:text-slate-200';
 
 export default function Locacoes() {
-  const { clienteId } = useFilter() || {};
+  const { locacaoIds, imovelIds, clienteIds } = useFilter() || {};
   const toast = useToast();
   const [locacoes, setLocacoes] = useState([]);
   const [imoveis, setImoveis]   = useState([]);
@@ -74,10 +74,19 @@ export default function Locacoes() {
   useEffect(() => { fetchAll(); }, []);
 
   const filtered = useMemo(() => locacoes.filter((l) => {
-    if (clienteId && l.cliente_id !== clienteId) return false;
+    if (locacaoIds && !locacaoIds.has(l.id)) return false;
     if (filterStatus && l.status !== filterStatus) return false;
     return true;
-  }), [locacoes, clienteId, filterStatus]);
+  }), [locacoes, locacaoIds, filterStatus]);
+
+  const imoveisOpts  = useMemo(
+    () => (imovelIds  ? imoveis.filter((i)  => imovelIds.has(i.id))   : imoveis),
+    [imoveis, imovelIds]
+  );
+  const clientesOpts = useMemo(
+    () => (clienteIds ? clientes.filter((c) => clienteIds.has(c.id)) : clientes),
+    [clientes, clienteIds]
+  );
 
   function openNew() { setEditing(null); setForm(emptyForm); setError(''); setModalOpen(true); }
   function openEdit(loc) {
@@ -265,14 +274,14 @@ export default function Locacoes() {
               <label className={label}>Imóvel *</label>
               <select required value={form.imovel_id} onChange={(e) => handleChange('imovel_id', e.target.value)} className={inputBase}>
                 <option value="">Selecione um imóvel</option>
-                {imoveis.map((i) => <option key={i.id} value={i.id}>{i.titulo} — {i.cidade}</option>)}
+                {imoveisOpts.map((i) => <option key={i.id} value={i.id}>{i.titulo} — {i.cidade}</option>)}
               </select>
             </div>
             <div>
               <label className={label}>Cliente *</label>
               <select required value={form.cliente_id} onChange={(e) => handleChange('cliente_id', e.target.value)} className={inputBase}>
                 <option value="">Selecione um cliente</option>
-                {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                {clientesOpts.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -5,39 +5,59 @@ import { useAuth } from './AuthContext';
 const FilterContext = createContext(null);
 
 export function FilterProvider({ children }) {
-  const { isAdmin } = useAuth();
-  const [clienteId, setClienteId] = useState(null);
-  const [clientes, setClientes]   = useState([]);
-  const [locacoes, setLocacoes]   = useState([]);
+  const { isSuperAdmin } = useAuth();
+  const [imobiliariaId, setImobiliariaId] = useState(null);
+  const [imobiliarias, setImobiliarias]   = useState([]);
+  const [imoveis, setImoveis]             = useState([]);
+  const [clientes, setClientes]           = useState([]);
+  const [locacoes, setLocacoes]           = useState([]);
 
   useEffect(() => {
-    if (!isAdmin) return;
-    Promise.all([api.get('/clientes'), api.get('/locacoes')])
-      .then(([cr, lr]) => { setClientes(cr.data); setLocacoes(lr.data); })
+    if (!isSuperAdmin) return;
+    Promise.all([
+      api.get('/imobiliarias'),
+      api.get('/imoveis'),
+      api.get('/clientes'),
+      api.get('/locacoes'),
+    ])
+      .then(([ir, imr, cr, lr]) => {
+        setImobiliarias(ir.data);
+        setImoveis(imr.data);
+        setClientes(cr.data);
+        setLocacoes(lr.data);
+      })
       .catch(() => {});
-  }, [isAdmin]);
+  }, [isSuperAdmin]);
 
-  // Set of imovel_ids linked to the selected cliente
+  // Set de imovel_ids pertencentes à imobiliária selecionada
   const imovelIds = useMemo(() => {
-    if (!clienteId) return null;
-    return new Set(locacoes.filter((l) => l.cliente_id === clienteId).map((l) => l.imovel_id));
-  }, [clienteId, locacoes]);
+    if (!imobiliariaId) return null;
+    return new Set(imoveis.filter((i) => i.imobiliaria_id === imobiliariaId).map((i) => i.id));
+  }, [imobiliariaId, imoveis]);
 
-  // Set of locacao_ids linked to the selected cliente
+  // Set de cliente_ids pertencentes à imobiliária selecionada
+  const clienteIds = useMemo(() => {
+    if (!imobiliariaId) return null;
+    return new Set(clientes.filter((c) => c.imobiliaria_id === imobiliariaId).map((c) => c.id));
+  }, [imobiliariaId, clientes]);
+
+  // Set de locacao_ids cujo imóvel pertence à imobiliária selecionada
   const locacaoIds = useMemo(() => {
-    if (!clienteId) return null;
-    return new Set(locacoes.filter((l) => l.cliente_id === clienteId).map((l) => l.id));
-  }, [clienteId, locacoes]);
+    if (!imobiliariaId || !imovelIds) return null;
+    return new Set(locacoes.filter((l) => imovelIds.has(l.imovel_id)).map((l) => l.id));
+  }, [imobiliariaId, locacoes, imovelIds]);
 
-  // Filtered locacoes for the selected cliente
   const locacoesFiltradas = useMemo(
-    () => (clienteId ? locacoes.filter((l) => l.cliente_id === clienteId) : locacoes),
-    [clienteId, locacoes]
+    () => (imobiliariaId ? locacoes.filter((l) => locacaoIds?.has(l.id)) : locacoes),
+    [imobiliariaId, locacoes, locacaoIds]
   );
 
   return (
     <FilterContext.Provider
-      value={{ clienteId, setClienteId, clientes, imovelIds, locacaoIds, locacoesFiltradas }}
+      value={{
+        imobiliariaId, setImobiliariaId, imobiliarias,
+        imovelIds, clienteIds, locacaoIds, locacoesFiltradas,
+      }}
     >
       {children}
     </FilterContext.Provider>

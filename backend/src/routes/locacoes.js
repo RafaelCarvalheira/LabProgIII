@@ -1,17 +1,43 @@
 const { Router } = require('express');
 const pool = require('../db/pool');
-const { requireAdmin } = require('../middleware/auth');
+const { requireManager } = require('../middleware/auth');
 
 const router = Router();
 
-// GET /locacoes - admin vê todas; cliente vê apenas as suas
+// Verifica se um imovel e um cliente pertencem à mesma imobiliária (e, se
+// informado, a uma imobiliária específica). Retorna null se ok, ou uma
+// mensagem de erro.
+async function validarTenant(imovel_id, cliente_id, imobiliariaEsperada) {
+  const { rows } = await pool.query(
+    `SELECT
+       (SELECT imobiliaria_id FROM imoveis  WHERE id = $1) AS imovel_tenant,
+       (SELECT imobiliaria_id FROM clientes WHERE id = $2) AS cliente_tenant`,
+    [imovel_id, cliente_id]
+  );
+  const { imovel_tenant, cliente_tenant } = rows[0] || {};
+  if (!imovel_tenant) return 'Imóvel não encontrado';
+  if (!cliente_tenant) return 'Cliente não encontrado';
+  if (imovel_tenant !== cliente_tenant) return 'Imóvel e cliente pertencem a imobiliárias diferentes';
+  if (imobiliariaEsperada && imovel_tenant !== imobiliariaEsperada) return 'Acesso negado';
+  return null;
+}
+
+// GET /locacoes - admin vê todas (filtro opcional ?imobiliaria_id=); imobiliaria vê só as suas; cliente vê apenas as suas
 router.get('/', async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, imobiliaria_id } = req.query;
     const params = [];
     const where = [];
 
-    if (req.user.papel !== 'admin') {
+    if (req.user.papel === 'imobiliaria') {
+      params.push(req.user.imobiliaria_id);
+      where.push(`i.imobiliaria_id = $${params.length}`);
+    } else if (req.user.papel === 'admin') {
+      if (imobiliaria_id) {
+        params.push(imobiliaria_id);
+        where.push(`i.imobiliaria_id = $${params.length}`);
+      }
+    } else {
       if (!req.user.cliente_id) return res.json([]);
       params.push(req.user.cliente_id);
       where.push(`l.cliente_id = $${params.length}`);
@@ -42,7 +68,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT l.*, i.titulo AS imovel_titulo, c.nome AS cliente_nome
+      `SELECT l.*, i.titulo AS imovel_titulo, i.imobiliaria_id, c.nome AS cliente_nome
        FROM locacoes l
        JOIN imoveis i ON i.id = l.imovel_id
        JOIN clientes c ON c.id = l.cliente_id
@@ -53,7 +79,10 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ erro: 'Locação não encontrada' });
     }
     const loc = result.rows[0];
-    if (req.user.papel !== 'admin' && loc.cliente_id !== req.user.cliente_id) {
+    if (req.user.papel === 'usuario' && loc.cliente_id !== req.user.cliente_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
+    if (req.user.papel === 'imobiliaria' && loc.imobiliaria_id !== req.user.imobiliaria_id) {
       return res.status(403).json({ erro: 'Acesso negado' });
     }
     res.json(loc);
@@ -62,11 +91,17 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Mutações: somente admin
-router.post('/', requireAdmin, async (req, res) => {
+// Mutações: admin (qualquer imobiliária) ou imobiliaria (só a própria)
+router.post('/', requireManager, async (req, res) => {
   try {
     const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status } = req.body;
     const statusFinal = status || 'pendente';
+
+    const erroTenant = await validarTenant(
+      imovel_id, cliente_id,
+      req.user.papel === 'imobiliaria' ? req.user.imobiliaria_id : null
+    );
+    if (erroTenant) return res.status(400).json({ erro: erroTenant });
 
     if (statusFinal === 'confirmada') {
       const conflito = await pool.query(
@@ -98,15 +133,27 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
-router.put('/:id', requireAdmin, async (req, res) => {
+router.put('/:id', requireManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, status } = req.body;
 
-    const atual = await pool.query('SELECT * FROM locacoes WHERE id=$1', [id]);
+    const atual = await pool.query(
+      `SELECT l.*, i.imobiliaria_id FROM locacoes l JOIN imoveis i ON i.id = l.imovel_id WHERE l.id=$1`,
+      [id]
+    );
     if (atual.rows.length === 0) {
       return res.status(404).json({ erro: 'Locação não encontrada' });
     }
+    if (req.user.papel === 'imobiliaria' && atual.rows[0].imobiliaria_id !== req.user.imobiliaria_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
+
+    const erroTenant = await validarTenant(
+      imovel_id, cliente_id,
+      req.user.papel === 'imobiliaria' ? req.user.imobiliaria_id : null
+    );
+    if (erroTenant) return res.status(400).json({ erro: erroTenant });
 
     if (status === 'confirmada') {
       const conflito = await pool.query(
@@ -141,7 +188,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.patch('/:id/status', requireAdmin, async (req, res) => {
+router.patch('/:id/status', requireManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -150,9 +197,16 @@ router.patch('/:id/status', requireAdmin, async (req, res) => {
       return res.status(400).json({ erro: 'Status inválido. Use: pendente, confirmada ou cancelada.' });
     }
 
+    const loc = await pool.query(
+      `SELECT l.*, i.imobiliaria_id FROM locacoes l JOIN imoveis i ON i.id = l.imovel_id WHERE l.id=$1`,
+      [id]
+    );
+    if (loc.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
+    if (req.user.papel === 'imobiliaria' && loc.rows[0].imobiliaria_id !== req.user.imobiliaria_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
+
     if (status === 'confirmada') {
-      const loc = await pool.query('SELECT * FROM locacoes WHERE id=$1', [id]);
-      if (loc.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
       const { imovel_id, data_inicio, data_fim } = loc.rows[0];
       const conflito = await pool.query(
         `SELECT 1 FROM locacoes
@@ -170,24 +224,28 @@ router.patch('/:id/status', requireAdmin, async (req, res) => {
       `UPDATE locacoes SET status=$1, ativa=$2 WHERE id=$3 RETURNING *`,
       [status, ativa, id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
-router.patch('/:id/encerrar', requireAdmin, async (req, res) => {
+router.patch('/:id/encerrar', requireManager, async (req, res) => {
   try {
     const { id } = req.params;
+    const loc = await pool.query(
+      `SELECT l.*, i.imobiliaria_id FROM locacoes l JOIN imoveis i ON i.id = l.imovel_id WHERE l.id=$1`,
+      [id]
+    );
+    if (loc.rows.length === 0) return res.status(404).json({ erro: 'Locação não encontrada' });
+    if (req.user.papel === 'imobiliaria' && loc.rows[0].imobiliaria_id !== req.user.imobiliaria_id) {
+      return res.status(403).json({ erro: 'Acesso negado' });
+    }
     const result = await pool.query(
       `UPDATE locacoes SET ativa=false, status='cancelada', data_fim=CURRENT_DATE
        WHERE id=$1 RETURNING *`,
       [id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ erro: 'Locação não encontrada' });
-    }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ erro: err.message });

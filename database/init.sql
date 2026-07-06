@@ -13,6 +13,19 @@ CREATE TABLE IF NOT EXISTS categorias_imoveis (
     descricao TEXT
 );
 
+-- Multi-tenant: cada imobiliária é um cliente da plataforma (não confundir com
+-- a tabela "clientes", que são os clientes DA imobiliária).
+CREATE TABLE IF NOT EXISTS imobiliarias (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    cnpj VARCHAR(18),
+    email VARCHAR(255),
+    telefone VARCHAR(20),
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS imobiliaria_id INTEGER REFERENCES imobiliarias(id) ON DELETE SET NULL;
+
 CREATE TABLE IF NOT EXISTS imoveis (
     id SERIAL PRIMARY KEY,
     titulo VARCHAR(255) NOT NULL,
@@ -28,6 +41,7 @@ CREATE TABLE IF NOT EXISTS imoveis (
     banheiros INTEGER DEFAULT 0,
     vagas_garagem INTEGER DEFAULT 0,
     disponivel BOOLEAN DEFAULT TRUE,
+    imobiliaria_id INTEGER REFERENCES imobiliarias(id) ON DELETE CASCADE,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -45,6 +59,7 @@ CREATE TABLE IF NOT EXISTS clientes (
     telefone VARCHAR(20),
     endereco VARCHAR(500),
     usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+    imobiliaria_id INTEGER REFERENCES imobiliarias(id) ON DELETE CASCADE,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,6 +93,9 @@ CREATE INDEX IF NOT EXISTS idx_financeiro_status     ON financeiro(status);
 CREATE INDEX IF NOT EXISTS idx_financeiro_tipo       ON financeiro(tipo);
 CREATE INDEX IF NOT EXISTS idx_financeiro_vencimento ON financeiro(data_vencimento);
 CREATE INDEX IF NOT EXISTS idx_financeiro_locacao    ON financeiro(locacao_id);
+CREATE INDEX IF NOT EXISTS idx_imoveis_imobiliaria   ON imoveis(imobiliaria_id);
+CREATE INDEX IF NOT EXISTS idx_clientes_imobiliaria  ON clientes(imobiliaria_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_imobiliaria  ON usuarios(imobiliaria_id);
 
 -- =============================================================
 -- Dados de exemplo (seed) — UTF-8
@@ -92,20 +110,25 @@ INSERT INTO categorias_imoveis (id, nome, descricao) VALUES
   (3, 'Studio',      'Unidade compacta de ambiente integrado')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO imoveis (id, titulo, descricao, endereco, cidade, estado, cep, valor_aluguel, valor_venda, area, quartos, banheiros, vagas_garagem, disponivel) VALUES
-  (1, 'Apartamento Centro',   'Apto 2 quartos reformado',   'Rua das Flores, 100', 'São Paulo', 'SP', '01000-000', 1500.00, NULL, 65.00,  2, 1, 1, TRUE),
-  (2, 'Casa Jardins',         'Casa 3 quartos com piscina', 'Av. Paulista, 200',   'São Paulo', 'SP', '01310-000', 3500.00, NULL, 180.00, 3, 2, 2, TRUE),
-  (3, 'Studio Vila Madalena', 'Studio compacto',            'Rua Harmonia, 50',    'São Paulo', 'SP', '05435-000', 2200.00, NULL, 35.00,  1, 1, 0, TRUE)
+INSERT INTO imobiliarias (id, nome) VALUES
+  (1, 'Imobiliária Padrão')
+ON CONFLICT DO NOTHING;
+SELECT setval('imobiliarias_id_seq', (SELECT MAX(id) FROM imobiliarias));
+
+INSERT INTO imoveis (id, titulo, descricao, endereco, cidade, estado, cep, valor_aluguel, valor_venda, area, quartos, banheiros, vagas_garagem, disponivel, imobiliaria_id) VALUES
+  (1, 'Apartamento Centro',   'Apto 2 quartos reformado',   'Rua das Flores, 100', 'São Paulo', 'SP', '01000-000', 1500.00, NULL, 65.00,  2, 1, 1, TRUE, 1),
+  (2, 'Casa Jardins',         'Casa 3 quartos com piscina', 'Av. Paulista, 200',   'São Paulo', 'SP', '01310-000', 3500.00, NULL, 180.00, 3, 2, 2, TRUE, 1),
+  (3, 'Studio Vila Madalena', 'Studio compacto',            'Rua Harmonia, 50',    'São Paulo', 'SP', '05435-000', 2200.00, NULL, 35.00,  1, 1, 0, TRUE, 1)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO imovel_categorias (imovel_id, categoria_id) VALUES
   (1, 1), (2, 2), (3, 3)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO clientes (id, nome, cpf, email, telefone, endereco) VALUES
-  (1, 'Ana Souza',     '123.456.789-00', 'ana@email.com',    '(11) 99999-9999', 'Rua A, 10'),
-  (2, 'Carlos Mendes', '987.654.321-00', 'carlos@email.com', '(11) 98888-8888', 'Rua B, 20'),
-  (3, 'Marina Lima',   '456.789.123-00', 'marina@email.com', '(11) 97777-7777', 'Rua C, 30')
+INSERT INTO clientes (id, nome, cpf, email, telefone, endereco, imobiliaria_id) VALUES
+  (1, 'Ana Souza',     '123.456.789-00', 'ana@email.com',    '(11) 99999-9999', 'Rua A, 10', 1),
+  (2, 'Carlos Mendes', '987.654.321-00', 'carlos@email.com', '(11) 98888-8888', 'Rua B, 20', 1),
+  (3, 'Marina Lima',   '456.789.123-00', 'marina@email.com', '(11) 97777-7777', 'Rua C, 30', 1)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO locacoes (id, imovel_id, cliente_id, data_inicio, data_fim, valor_mensal, ativa, status, valor_total) VALUES
@@ -135,3 +158,6 @@ SELECT setval('imoveis_id_seq',            (SELECT MAX(id) FROM imoveis));
 SELECT setval('clientes_id_seq',           (SELECT MAX(id) FROM clientes));
 SELECT setval('locacoes_id_seq',           (SELECT MAX(id) FROM locacoes));
 SELECT setval('financeiro_id_seq',         (SELECT MAX(id) FROM financeiro));
+
+ALTER TABLE imoveis  ALTER COLUMN imobiliaria_id SET NOT NULL;
+ALTER TABLE clientes ALTER COLUMN imobiliaria_id SET NOT NULL;

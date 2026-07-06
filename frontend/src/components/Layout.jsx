@@ -19,7 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import RcpLogo from './RcpLogo';
 import { FilterProvider } from '../context/FilterContext';
-import ClienteFilterBar from './ClienteFilterBar';
+import ImobiliariaFilterBar from './ImobiliariaFilterBar';
 
 const ADMIN_NAV = [
   { to: '/',                label: 'Dashboard',       icon: LayoutDashboard },
@@ -29,7 +29,18 @@ const ADMIN_NAV = [
   { to: '/financeiro',      label: 'Financeiro',      icon: DollarSign },
   { to: '/disponibilidade', label: 'Disponibilidade', icon: CalendarSearch },
   { to: '/calendario',      label: 'Agenda',          icon: CalendarDays },
+  { to: '/imobiliarias',    label: 'Imobiliárias',    icon: ShieldCheck },
   { to: '/usuarios',        label: 'Usuários',        icon: KeyRound },
+];
+
+const MANAGER_NAV = [
+  { to: '/',                label: 'Dashboard',       icon: LayoutDashboard },
+  { to: '/imoveis',         label: 'Imóveis',         icon: Building2 },
+  { to: '/clientes',        label: 'Clientes',        icon: Users },
+  { to: '/locacoes',        label: 'Locações',        icon: FileKey2 },
+  { to: '/financeiro',      label: 'Financeiro',      icon: DollarSign },
+  { to: '/disponibilidade', label: 'Disponibilidade', icon: CalendarSearch },
+  { to: '/calendario',      label: 'Agenda',          icon: CalendarDays },
 ];
 
 const CLIENT_NAV = [
@@ -52,7 +63,7 @@ export default function Layout() {
   const [open, setOpen] = useState(() => !window.matchMedia(MOBILE_QUERY).matches);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isSuperAdmin, isManager } = useAuth();
 
   // Acompanha o breakpoint: no mobile a sidebar vira drawer fechado por padrão
   useEffect(() => {
@@ -67,7 +78,7 @@ export default function Layout() {
     if (isMobile) setOpen(false);
   }, [location.pathname, isMobile]);
 
-  const navItems = isAdmin ? ADMIN_NAV : CLIENT_NAV;
+  const navItems = isSuperAdmin ? ADMIN_NAV : isManager ? MANAGER_NAV : CLIENT_NAV;
 
   function handleLogout() {
     logout();
@@ -236,15 +247,15 @@ export default function Layout() {
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: isAdmin
+                    background: isManager
                       ? 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(20,184,166,0.2))'
                       : 'rgba(255,255,255,0.06)',
-                    border: isAdmin
+                    border: isManager
                       ? '1px solid rgba(99,102,241,0.3)'
                       : '1px solid rgba(255,255,255,0.08)',
                   }}
                 >
-                  {isAdmin
+                  {isManager
                     ? <ShieldCheck size={13} className="text-brand-400" strokeWidth={2} />
                     : <UserCircle  size={13} className="text-slate-500"  strokeWidth={1.8} />
                   }
@@ -254,7 +265,7 @@ export default function Layout() {
                     {user.nome}
                   </p>
                   <p className="text-[10px] text-slate-600 font-body">
-                    {isAdmin ? 'Administrador' : 'Cliente'}
+                    {isSuperAdmin ? 'Superadmin' : isManager ? 'Imobiliária' : 'Inquilino'}
                   </p>
                 </div>
               </motion.div>
@@ -337,7 +348,7 @@ export default function Layout() {
         style={{ paddingTop: isMobile ? MOBILE_TOPBAR : 0 }}
       >
         <div className="max-w-[1320px] mx-auto px-4 sm:px-8 pt-8">
-          <ClienteFilterBar />
+          <ImobiliariaFilterBar />
         </div>
         <AnimatePresence mode="wait">
           <motion.div

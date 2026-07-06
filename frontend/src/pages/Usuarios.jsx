@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserPlus, Search, Shield, UserCircle, Pencil, Trash2,
-  X, Eye, EyeOff, AlertCircle, CheckCircle2, Link2,
+  X, Eye, EyeOff, AlertCircle, CheckCircle2, Link2, Building2,
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -11,8 +11,9 @@ import { useToast } from '../components/Toast';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 const PAPEL_CONFIG = {
-  admin:   { label: 'Admin',        color: '#6366F1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.3)',  Icon: Shield },
-  usuario: { label: 'Proprietário', color: '#14B8A6', bg: 'rgba(20,184,166,0.10)', border: 'rgba(20,184,166,0.25)', Icon: UserCircle },
+  admin:      { label: 'Admin',       color: '#6366F1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.3)',  Icon: Shield },
+  imobiliaria:{ label: 'Imobiliária', color: '#F59E0B', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)', Icon: Building2 },
+  usuario:    { label: 'Inquilino',   color: '#14B8A6', bg: 'rgba(20,184,166,0.10)', border: 'rgba(20,184,166,0.25)', Icon: UserCircle },
 };
 
 function RoleBadge({ papel }) {
@@ -29,14 +30,15 @@ function RoleBadge({ papel }) {
   );
 }
 
-const BLANK = { nome: '', email: '', senha: '', papel: 'usuario', cliente_id: '' };
+const BLANK = { nome: '', email: '', senha: '', papel: 'usuario', cliente_id: '', imobiliaria_id: '' };
 
 /* ── Componente principal ─────────────────────────────────── */
 export default function Usuarios() {
   const { user: me } = useAuth();
   const toast = useToast();
-  const [usuarios, setUsuarios]  = useState([]);
-  const [clientes, setClientes]  = useState([]);
+  const [usuarios, setUsuarios]       = useState([]);
+  const [clientes, setClientes]       = useState([]);
+  const [imobiliarias, setImobiliarias] = useState([]);
   const [loading, setLoading]    = useState(true);
   const [busca, setBusca]        = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -51,12 +53,14 @@ export default function Usuarios() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [u, c] = await Promise.all([
+      const [u, c, im] = await Promise.all([
         api.get('/usuarios'),
         api.get('/clientes'),
+        api.get('/imobiliarias'),
       ]);
       setUsuarios(u.data);
       setClientes(c.data);
+      setImobiliarias(im.data);
     } catch { /* silencia */ }
     finally { setLoading(false); }
   }, []);
@@ -75,11 +79,12 @@ export default function Usuarios() {
   function abrirEditar(u) {
     setEditando(u);
     setForm({
-      nome:       u.nome,
-      email:      u.email,
-      senha:      '',
-      papel:      u.papel,
-      cliente_id: u.cliente_id ?? '',
+      nome:           u.nome,
+      email:          u.email,
+      senha:          '',
+      papel:          u.papel,
+      cliente_id:     u.cliente_id ?? '',
+      imobiliaria_id: u.imobiliaria_id ?? '',
     });
     setShowPass(false);
     setFeedback({ tipo: '', msg: '' });
@@ -93,18 +98,23 @@ export default function Usuarios() {
     setFeedback({ tipo: '', msg: '' });
 
     try {
-      const payload = {
-        nome:       form.nome.trim(),
-        email:      form.email.trim(),
-        papel:      form.papel,
-        cliente_id: form.cliente_id || null,
-        ...(form.senha ? { senha: form.senha } : {}),
-      };
-
       if (!editando && !form.senha) {
         setFeedback({ tipo: 'erro', msg: 'Senha é obrigatória ao criar um usuário.' });
         return;
       }
+      if (form.papel === 'imobiliaria' && !form.imobiliaria_id) {
+        setFeedback({ tipo: 'erro', msg: 'Selecione a imobiliária vinculada.' });
+        return;
+      }
+
+      const payload = {
+        nome:           form.nome.trim(),
+        email:          form.email.trim(),
+        papel:          form.papel,
+        cliente_id:     form.cliente_id || null,
+        imobiliaria_id: form.papel === 'imobiliaria' ? form.imobiliaria_id : null,
+        ...(form.senha ? { senha: form.senha } : {}),
+      };
 
       if (editando) {
         await api.put(`/usuarios/${editando.id}`, payload);
@@ -207,7 +217,7 @@ export default function Usuarios() {
           <table className="w-full text-sm font-body">
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Usuário', 'E-mail', 'Perfil', 'Cliente vinculado', 'Criado em', ''].map((h) => (
+                {['Usuário', 'E-mail', 'Perfil', 'Vínculo', 'Criado em', ''].map((h) => (
                   <th key={h} className="text-left px-5 py-3.5 text-[11px] font-700 text-slate-600 uppercase tracking-widest">
                     {h}
                   </th>
@@ -231,6 +241,8 @@ export default function Usuarios() {
                         style={{
                           background: u.papel === 'admin'
                             ? 'linear-gradient(135deg, #6366F1, #818CF8)'
+                            : u.papel === 'imobiliaria'
+                            ? 'linear-gradient(135deg, #B45309, #F59E0B)'
                             : 'linear-gradient(135deg, #0F766E, #14B8A6)',
                         }}
                       >
@@ -247,7 +259,12 @@ export default function Usuarios() {
                   <td className="px-5 py-4 text-slate-400">{u.email}</td>
                   <td className="px-5 py-4"><RoleBadge papel={u.papel} /></td>
                   <td className="px-5 py-4">
-                    {u.cliente_nome ? (
+                    {u.imobiliaria_nome ? (
+                      <span className="flex items-center gap-1.5 text-slate-400">
+                        <Building2 size={12} strokeWidth={2} className="text-amber-500" />
+                        {u.imobiliaria_nome}
+                      </span>
+                    ) : u.cliente_nome ? (
                       <span className="flex items-center gap-1.5 text-slate-400">
                         <Link2 size={12} strokeWidth={2} className="text-accent-500" />
                         {u.cliente_nome}
@@ -409,8 +426,8 @@ export default function Usuarios() {
                   <label className="block text-xs font-700 text-slate-400 mb-1.5 uppercase tracking-wide font-body">
                     Perfil de acesso
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['usuario', 'admin'].map((p) => {
+                  <div className="grid grid-cols-3 gap-2">
+                    {['usuario', 'imobiliaria', 'admin'].map((p) => {
                       const { label, color, bg, border, Icon } = PAPEL_CONFIG[p];
                       const active = form.papel === p;
                       return (
@@ -418,7 +435,7 @@ export default function Usuarios() {
                           key={p}
                           type="button"
                           onClick={() => setForm({ ...form, papel: p })}
-                          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+                          className="flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150"
                           style={{
                             background: active ? bg : 'rgba(255,255,255,0.04)',
                             border: `1px solid ${active ? border : 'rgba(255,255,255,0.07)'}`,
@@ -433,33 +450,60 @@ export default function Usuarios() {
                   </div>
                   <p className="text-[11px] text-slate-600 mt-1.5 font-body">
                     {form.papel === 'admin'
-                      ? 'Acesso total à plataforma'
+                      ? 'Acesso total à plataforma, todas as imobiliárias'
+                      : form.papel === 'imobiliaria'
+                      ? 'Gerencia imóveis, clientes e locações da imobiliária vinculada'
                       : 'Vê apenas seus próprios imóveis e contratos'}
                   </p>
                 </div>
 
+                {/* Imobiliária vinculada */}
+                {form.papel === 'imobiliaria' && (
+                  <div>
+                    <label className="block text-xs font-700 text-slate-400 mb-1.5 uppercase tracking-wide font-body">
+                      Imobiliária vinculada
+                    </label>
+                    <select
+                      required
+                      value={form.imobiliaria_id}
+                      onChange={(e) => setForm({ ...form, imobiliaria_id: e.target.value })}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl text-slate-300 outline-none focus:ring-1 focus:ring-brand-500/40 transition font-body"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      <option value="">Selecione...</option>
+                      {imobiliarias.map((im) => (
+                        <option key={im.id} value={im.id} style={{ background: '#0E1624' }}>
+                          {im.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Cliente vinculado */}
-                <div>
-                  <label className="block text-xs font-700 text-slate-400 mb-1.5 uppercase tracking-wide font-body">
-                    Vincular ao cliente (opcional)
-                  </label>
-                  <select
-                    value={form.cliente_id}
-                    onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl text-slate-300 outline-none focus:ring-1 focus:ring-brand-500/40 transition font-body"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  >
-                    <option value="">— Sem vínculo —</option>
-                    {clientes.map((c) => (
-                      <option key={c.id} value={c.id} style={{ background: '#0E1624' }}>
-                        {c.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-slate-600 mt-1.5 font-body">
-                    Usuários do perfil Proprietário só acessam dados do cliente vinculado
-                  </p>
-                </div>
+                {form.papel === 'usuario' && (
+                  <div>
+                    <label className="block text-xs font-700 text-slate-400 mb-1.5 uppercase tracking-wide font-body">
+                      Vincular ao cliente (opcional)
+                    </label>
+                    <select
+                      value={form.cliente_id}
+                      onChange={(e) => setForm({ ...form, cliente_id: e.target.value })}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl text-slate-300 outline-none focus:ring-1 focus:ring-brand-500/40 transition font-body"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      <option value="">— Sem vínculo —</option>
+                      {clientes.map((c) => (
+                        <option key={c.id} value={c.id} style={{ background: '#0E1624' }}>
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-600 mt-1.5 font-body">
+                      Usuários do perfil Inquilino só acessam dados do cliente vinculado
+                    </p>
+                  </div>
+                )}
 
                 {/* Feedback */}
                 <AnimatePresence>

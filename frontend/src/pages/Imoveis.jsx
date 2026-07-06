@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import { useFilter } from '../context/FilterContext';
+import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import StatusBadge from '../components/StatusBadge';
@@ -18,6 +19,7 @@ const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(25
 const emptyForm = {
   titulo: '', descricao: '', endereco: '', cidade: '', estado: '', cep: '',
   valor_aluguel: '', valor_venda: '', area: '', quartos: 0, banheiros: 0, vagas_garagem: 0,
+  imobiliaria_id: '',
 };
 
 function fmt(val) {
@@ -39,7 +41,8 @@ const cardVariants = {
 };
 
 export default function Imoveis() {
-  const { imovelIds } = useFilter() || {};
+  const { imovelIds, imobiliariaId, imobiliarias } = useFilter() || {};
+  const { isSuperAdmin } = useAuth();
   const toast = useToast();
   const [imoveis, setImoveis]       = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -79,7 +82,11 @@ export default function Imoveis() {
     });
   }, [imoveis, imovelIds, search, filterCidade, filterStatus]);
 
-  function openNew() { setEditing(null); setForm(emptyForm); setError(''); setModalOpen(true); }
+  function openNew() {
+    setEditing(null);
+    setForm({ ...emptyForm, imobiliaria_id: imobiliariaId || '' });
+    setError(''); setModalOpen(true);
+  }
   function openEdit(im) {
     setEditing(im);
     setForm({
@@ -87,13 +94,18 @@ export default function Imoveis() {
       cidade: im.cidade || '', estado: im.estado || '', cep: im.cep || '',
       valor_aluguel: im.valor_aluguel || '', valor_venda: im.valor_venda || '',
       area: im.area || '', quartos: im.quartos || 0, banheiros: im.banheiros || 0,
-      vagas_garagem: im.vagas_garagem || 0,
+      vagas_garagem: im.vagas_garagem || 0, imobiliaria_id: im.imobiliaria_id || '',
     });
     setError(''); setModalOpen(true);
   }
 
   async function handleSubmit(e) {
     e.preventDefault(); setSaving(true); setError('');
+    if (isSuperAdmin && !form.imobiliaria_id) {
+      setError('Selecione a imobiliária responsável pelo imóvel.');
+      setSaving(false);
+      return;
+    }
     try {
       const payload = {
         ...form,
@@ -304,6 +316,22 @@ export default function Imoveis() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>
+            )}
+            {isSuperAdmin && (
+              <div>
+                <label className={label}>Imobiliária *</label>
+                <select
+                  required
+                  value={form.imobiliaria_id}
+                  onChange={(e) => handleChange('imobiliaria_id', e.target.value)}
+                  className={`${inputBase} px-4`}
+                >
+                  <option value="">Selecione...</option>
+                  {imobiliarias?.map((i) => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                </select>
+              </div>
             )}
             <div>
               <label className={label}>Título *</label>

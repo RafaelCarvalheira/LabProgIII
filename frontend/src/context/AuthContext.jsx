@@ -44,6 +44,8 @@ export function AuthProvider({ children }) {
       login,
       logout,
       isAdmin: user?.papel === 'admin',
+      isSuperAdmin: user?.papel === 'admin',
+      isManager: user?.papel === 'admin' || user?.papel === 'imobiliaria',
     }}>
       {children}
     </AuthContext.Provider>

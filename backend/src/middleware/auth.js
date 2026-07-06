@@ -23,4 +23,12 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin, JWT_SECRET };
+// admin (superadmin, vê todas as imobiliárias) ou imobiliaria (vê só a própria)
+function requireManager(req, res, next) {
+  if (!req.user || (req.user.papel !== 'admin' && req.user.papel !== 'imobiliaria')) {
+    return res.status(403).json({ erro: 'Acesso restrito a administradores' });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin, requireManager, JWT_SECRET };

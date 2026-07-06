@@ -194,8 +194,8 @@ const containerVariants = {
 
 /* ── Dashboard ────────────────────────────────────────────── */
 export default function Dashboard() {
-  const { user, isAdmin } = useAuth();
-  const { clienteId, imovelIds } = useFilter() || {};
+  const { user, isSuperAdmin, isManager } = useAuth();
+  const { imobiliariaId, imovelIds, clienteIds, locacaoIds } = useFilter() || {};
   const [loading, setLoading]     = useState(true);
   const [rawImoveis, setRawImoveis]   = useState([]);
   const [rawClientes, setRawClientes] = useState([]);
@@ -234,16 +234,16 @@ export default function Dashboard() {
   }, []);
 
   const locacoesFiltradas = useMemo(
-    () => (clienteId ? rawLocacoes.filter((l) => l.cliente_id === clienteId) : rawLocacoes),
-    [rawLocacoes, clienteId]
+    () => (imobiliariaId ? rawLocacoes.filter((l) => locacaoIds?.has(l.id)) : rawLocacoes),
+    [rawLocacoes, imobiliariaId, locacaoIds]
   );
 
   const kpis = useMemo(() => ({
-    imoveis:        clienteId ? (imovelIds?.size ?? 0) : rawImoveis.length,
-    clientes:       clienteId ? 1 : rawClientes.length,
+    imoveis:        imobiliariaId ? (imovelIds?.size ?? 0)  : rawImoveis.length,
+    clientes:       imobiliariaId ? (clienteIds?.size ?? 0) : rawClientes.length,
     locacoesAtivas: locacoesFiltradas.filter((l) => l.ativa).length,
     receitaMes:     resumo.receitas_recebidas,
-  }), [rawImoveis, rawClientes, locacoesFiltradas, resumo, clienteId, imovelIds]);
+  }), [rawImoveis, rawClientes, locacoesFiltradas, resumo, imobiliariaId, imovelIds, clienteIds]);
 
   const ultimas = useMemo(() => locacoesFiltradas.slice(0, 5), [locacoesFiltradas]);
 
@@ -318,13 +318,13 @@ export default function Dashboard() {
           <span
             className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1 rounded-full text-[11px] font-700 uppercase tracking-wide"
             style={{
-              background: isAdmin ? 'rgba(99,102,241,0.15)' : 'rgba(20,184,166,0.12)',
-              border: isAdmin ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(20,184,166,0.25)',
-              color: isAdmin ? '#818CF8' : '#2DD4BF',
+              background: isManager ? 'rgba(99,102,241,0.15)' : 'rgba(20,184,166,0.12)',
+              border: isManager ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(20,184,166,0.25)',
+              color: isManager ? '#818CF8' : '#2DD4BF',
             }}
           >
             <Sparkles size={10} strokeWidth={2.2} />
-            {isAdmin ? 'Administrador' : 'Proprietário'}
+            {isSuperAdmin ? 'Administrador' : isManager ? 'Imobiliária' : 'Inquilino'}
           </span>
         </div>
       </motion.div>
