@@ -1,23 +1,34 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Imoveis from './pages/Imoveis';
-import Clientes from './pages/Clientes';
-import Locacoes from './pages/Locacoes';
-import Financeiro from './pages/Financeiro';
-import Disponibilidade from './pages/Disponibilidade';
-import Calendario from './pages/Calendario';
-import Usuarios from './pages/Usuarios';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Imoveis = lazy(() => import('./pages/Imoveis'));
+const Clientes = lazy(() => import('./pages/Clientes'));
+const Locacoes = lazy(() => import('./pages/Locacoes'));
+const Financeiro = lazy(() => import('./pages/Financeiro'));
+const Disponibilidade = lazy(() => import('./pages/Disponibilidade'));
+const Calendario = lazy(() => import('./pages/Calendario'));
+const Usuarios = lazy(() => import('./pages/Usuarios'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-indigo-400 animate-spin" />
+    </div>
+  );
+}
 
 export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
       <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Pública */}
           <Route path="/login" element={<Login />} />
@@ -43,6 +54,7 @@ export default function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
       </ToastProvider>
     </AuthProvider>
