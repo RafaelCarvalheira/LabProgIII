@@ -6,6 +6,7 @@ import { useFilter } from '../context/FilterContext';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import { SkeletonTable } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' };
 
@@ -46,6 +47,7 @@ const btnGhost   = 'px-5 py-2.5 text-sm font-medium text-slate-400 rounded-xl tr
 
 export default function Locacoes() {
   const { clienteId } = useFilter() || {};
+  const toast = useToast();
   const [locacoes, setLocacoes] = useState([]);
   const [imoveis, setImoveis]   = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -96,13 +98,18 @@ export default function Locacoes() {
       if (editing) await api.put(`/locacoes/${editing.id}`, payload);
       else          await api.post('/locacoes', payload);
       setModalOpen(false); fetchAll();
+      toast.success(editing ? 'Locação atualizada!' : 'Locação registrada!');
     } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar locação'); }
     finally       { setSaving(false); }
   }
 
   async function handleChangeStatus(id, status) {
-    try { await api.patch(`/locacoes/${id}/status`, { status }); fetchAll(); }
-    catch (err) { setError(err.response?.data?.erro || 'Erro ao alterar status'); }
+    try {
+      await api.patch(`/locacoes/${id}/status`, { status });
+      fetchAll();
+      toast.success(`Locação ${status === 'confirmada' ? 'confirmada' : status === 'cancelada' ? 'cancelada' : 'reaberta'}.`);
+    }
+    catch (err) { toast.error(err.response?.data?.erro || 'Erro ao alterar status'); }
   }
 
   function handleChange(f, v) { setForm((p) => ({ ...p, [f]: v })); }
@@ -156,7 +163,7 @@ export default function Locacoes() {
               }
             >
               {opt.label}
-              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20' : 'bg-white/05'}`}>
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20' : 'bg-white/5'}`}>
                 {count}
               </span>
             </button>
@@ -171,7 +178,12 @@ export default function Locacoes() {
       )}
 
       {filtered.length === 0 ? (
-        <EmptyState message="Nenhuma locação encontrada" icon={FileKey2} />
+        <EmptyState
+          message="Nenhuma locação encontrada"
+          icon={FileKey2}
+          actionLabel="Nova Locação"
+          onAction={openNew}
+        />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -212,33 +224,25 @@ export default function Locacoes() {
                     <td style={{ textAlign: 'right' }}>
                       <div className="inline-flex items-center gap-1">
                         {loc.status === 'pendente' && (
-                          <button onClick={() => handleChangeStatus(loc.id, 'confirmada')} title="Confirmar"
-                            className="p-1.5 rounded-lg text-emerald-500 transition-colors"
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16,185,129,0.12)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <button onClick={() => handleChangeStatus(loc.id, 'confirmada')} title="Confirmar" aria-label="Confirmar locação"
+                            className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-500/10 transition-colors">
                             <CheckCircle2 size={15} strokeWidth={2} />
                           </button>
                         )}
                         {loc.status !== 'cancelada' && (
-                          <button onClick={() => handleChangeStatus(loc.id, 'cancelada')} title="Cancelar"
-                            className="p-1.5 rounded-lg text-rose-400 transition-colors"
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <button onClick={() => handleChangeStatus(loc.id, 'cancelada')} title="Cancelar" aria-label="Cancelar locação"
+                            className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/10 transition-colors">
                             <XCircle size={15} strokeWidth={2} />
                           </button>
                         )}
                         {loc.status === 'cancelada' && (
-                          <button onClick={() => handleChangeStatus(loc.id, 'pendente')} title="Reabrir"
-                            className="p-1.5 rounded-lg text-amber-400 transition-colors"
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(245,158,11,0.12)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <button onClick={() => handleChangeStatus(loc.id, 'pendente')} title="Reabrir" aria-label="Reabrir locação"
+                            className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-500/10 transition-colors">
                             <Clock size={15} strokeWidth={2} />
                           </button>
                         )}
-                        <button onClick={() => openEdit(loc)} title="Editar"
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-200 transition-colors"
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <button onClick={() => openEdit(loc)} title="Editar" aria-label="Editar locação"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-200 hover:bg-white/10 transition-colors">
                           <Pencil size={14} strokeWidth={1.8} />
                         </button>
                       </div>
@@ -252,8 +256,7 @@ export default function Locacoes() {
       )}
 
       {/* Modal */}
-      {modalOpen && (
-        <Modal title={editing ? 'Editar Locação' : 'Nova Locação'} onClose={() => setModalOpen(false)}>
+      <Modal open={modalOpen} title={editing ? 'Editar Locação' : 'Nova Locação'} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>
@@ -317,7 +320,6 @@ export default function Locacoes() {
             </div>
           </form>
         </Modal>
-      )}
     </div>
   );
 }

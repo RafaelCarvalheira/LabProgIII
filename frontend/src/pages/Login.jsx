@@ -126,20 +126,7 @@ export default function Login() {
                   placeholder="seu@email.com"
                   required
                   className="w-full pl-10 pr-4 py-3 rounded-xl text-sm font-body text-slate-200
-                             placeholder-slate-600 transition-all duration-150 outline-none
-                             focus:ring-1 focus:ring-brand-500"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgba(99,102,241,0.5)';
-                    e.target.style.background = 'rgba(99,102,241,0.06)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.08)';
-                    e.target.style.background = 'rgba(255,255,255,0.04)';
-                  }}
+                             placeholder-slate-600 transition-all duration-150 outline-none"
                 />
               </div>
             </div>
@@ -164,22 +151,11 @@ export default function Login() {
                   required
                   className="w-full pl-10 pr-11 py-3 rounded-xl text-sm font-body text-slate-200
                              placeholder-slate-600 transition-all duration-150 outline-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgba(99,102,241,0.5)';
-                    e.target.style.background = 'rgba(99,102,241,0.06)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.08)';
-                    e.target.style.background = 'rgba(255,255,255,0.04)';
-                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? 'Ocultar senha' : 'Mostrar senha'}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-600
                              hover:text-slate-400 transition-colors"
                 >

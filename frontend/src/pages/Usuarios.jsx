@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 const PAPEL_CONFIG = {
@@ -32,6 +34,7 @@ const BLANK = { nome: '', email: '', senha: '', papel: 'usuario', cliente_id: ''
 /* ── Componente principal ─────────────────────────────────── */
 export default function Usuarios() {
   const { user: me } = useAuth();
+  const toast = useToast();
   const [usuarios, setUsuarios]  = useState([]);
   const [clientes, setClientes]  = useState([]);
   const [loading, setLoading]    = useState(true);
@@ -124,8 +127,9 @@ export default function Usuarios() {
     try {
       await api.delete(`/usuarios/${u.id}`);
       setUsuarios((prev) => prev.filter((x) => x.id !== u.id));
+      toast.success('Usuário excluído.');
     } catch (err) {
-      alert(err.response?.data?.erro || 'Erro ao excluir.');
+      toast.error(err.response?.data?.erro || 'Erro ao excluir.');
     } finally {
       setConfirmDelete(null);
     }
@@ -217,10 +221,8 @@ export default function Usuarios() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="group transition-colors duration-100"
+                  className="group transition-colors duration-100 hover:bg-white/[0.03]"
                   style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -263,6 +265,7 @@ export default function Usuarios() {
                         onClick={() => abrirEditar(u)}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-brand-400 hover:bg-brand-500/10 transition-colors"
                         title="Editar"
+                        aria-label={`Editar ${u.nome}`}
                       >
                         <Pencil size={14} strokeWidth={2} />
                       </button>
@@ -271,6 +274,7 @@ export default function Usuarios() {
                           onClick={() => setConfirmDelete(u)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                           title="Excluir"
+                          aria-label={`Excluir ${u.nome}`}
                         >
                           <Trash2 size={14} strokeWidth={2} />
                         </button>
@@ -333,6 +337,7 @@ export default function Usuarios() {
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
+                  aria-label="Fechar"
                   className="text-slate-500 hover:text-slate-300 transition-colors p-1"
                 >
                   <X size={18} strokeWidth={2} />
@@ -391,6 +396,7 @@ export default function Usuarios() {
                     <button
                       type="button"
                       onClick={() => setShowPass(!showPass)}
+                      aria-label={showPass ? 'Ocultar senha' : 'Mostrar senha'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                     >
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -505,55 +511,18 @@ export default function Usuarios() {
       </AnimatePresence>
 
       {/* ── Modal confirmar exclusão ───────────────────────────── */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <motion.div
-            key="confirm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
-          >
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              className="w-full max-w-sm rounded-2xl p-6 text-center"
-              style={{
-                background: 'linear-gradient(145deg, #0E1624, #111C2E)',
-                border: '1px solid rgba(239,68,68,0.2)',
-                boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
-              }}
-            >
-              <div className="w-12 h-12 rounded-full bg-rose-500/15 flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={20} className="text-rose-400" strokeWidth={2} />
-              </div>
-              <h3 className="font-display font-700 text-white text-lg mb-2">Excluir usuário?</h3>
-              <p className="text-sm text-slate-500 font-body mb-6">
-                <strong className="text-slate-300">{confirmDelete.nome}</strong> perderá o acesso
-                imediatamente. Esta ação não pode ser desfeita.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-slate-200 transition font-body"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => excluir(confirmDelete)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition"
-                  style={{ background: 'rgba(239,68,68,0.9)', boxShadow: '0 4px 16px rgba(239,68,68,0.3)' }}
-                >
-                  Excluir
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir usuário?"
+        message={
+          <>
+            <strong className="text-slate-300">{confirmDelete?.nome}</strong> perderá o acesso
+            imediatamente. Esta ação não pode ser desfeita.
+          </>
+        }
+        onConfirm={() => excluir(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

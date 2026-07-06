@@ -8,9 +8,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import api from '../api/axios';
 import { useFilter } from '../context/FilterContext';
 import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import { SkeletonCard, SkeletonTable } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' };
 
@@ -75,6 +77,7 @@ function PieTooltip({ active, payload }) {
 /* ── Main ─────────────────────────────────────────────────── */
 export default function Financeiro() {
   const { locacaoIds } = useFilter() || {};
+  const toast = useToast();
   const [registros, setRegistros] = useState([]);
   const [locacoes, setLocacoes]   = useState([]);
   const [resumo, setResumo]       = useState(null);
@@ -134,18 +137,19 @@ export default function Financeiro() {
       if (editId) await api.put(`/financeiro/${editId}`, payload);
       else         await api.post('/financeiro', payload);
       setModalOpen(false); fetchAll();
+      toast.success(editId ? 'Lançamento atualizado!' : 'Lançamento registrado!');
     } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar lançamento'); }
     finally       { setSaving(false); }
   }
 
   async function handlePagar(id) {
-    try { await api.patch(`/financeiro/${id}/pagar`); fetchAll(); }
-    catch { setError('Erro ao registrar pagamento'); }
+    try { await api.patch(`/financeiro/${id}/pagar`); fetchAll(); toast.success('Pagamento registrado!'); }
+    catch { toast.error('Erro ao registrar pagamento'); }
   }
 
   async function handleDelete(id) {
-    try { await api.delete(`/financeiro/${id}`); setConfirmDelete(null); fetchAll(); }
-    catch { setError('Erro ao excluir lançamento'); }
+    try { await api.delete(`/financeiro/${id}`); setConfirmDelete(null); fetchAll(); toast.success('Lançamento excluído.'); }
+    catch { toast.error('Erro ao excluir lançamento'); }
   }
 
   function handleChange(f, v) { setForm((p) => ({ ...p, [f]: v })); }
@@ -280,7 +284,12 @@ export default function Financeiro() {
 
       {/* Table */}
       {displayRegistros.length === 0 ? (
-        <EmptyState message="Nenhum lançamento encontrado" icon={DollarSign} />
+        <EmptyState
+          message="Nenhum lançamento encontrado"
+          icon={DollarSign}
+          actionLabel="Novo Lançamento"
+          onAction={openNew}
+        />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -330,24 +339,18 @@ export default function Financeiro() {
                         {reg.status !== 'pago' && (
                           <button
                             onClick={() => handlePagar(reg.id)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-400 rounded-lg transition-colors"
-                            style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.20)' }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(16,185,129,0.22)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(16,185,129,0.12)'}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-400 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                            style={{ border: '1px solid rgba(16,185,129,0.20)' }}
                           >
                             <CheckCircle2 size={12} strokeWidth={2} /> Pagar
                           </button>
                         )}
-                        <button onClick={() => openEdit(reg)}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-200 transition-colors"
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <button onClick={() => openEdit(reg)} aria-label="Editar lançamento"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-200 hover:bg-white/10 transition-colors">
                           <Pencil size={13} strokeWidth={2} />
                         </button>
-                        <button onClick={() => setConfirmDelete(reg)}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-rose-400 transition-colors"
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <button onClick={() => setConfirmDelete(reg)} aria-label="Excluir lançamento"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors">
                           <Trash2 size={13} strokeWidth={2} />
                         </button>
                       </div>
@@ -361,8 +364,7 @@ export default function Financeiro() {
       )}
 
       {/* Modal criar/editar */}
-      {modalOpen && (
-        <Modal title={editId ? 'Editar Lançamento' : 'Novo Lançamento'} onClose={() => setModalOpen(false)}>
+      <Modal open={modalOpen} title={editId ? 'Editar Lançamento' : 'Novo Lançamento'} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>}
             <div>
@@ -411,24 +413,24 @@ export default function Financeiro() {
             </div>
           </form>
         </Modal>
-      )}
 
       {/* Confirmar exclusão */}
-      {confirmDelete && (
-        <Modal title="Excluir lançamento" onClose={() => setConfirmDelete(null)}>
-          <p className="text-sm text-slate-400 mb-6">
-            Tem certeza que deseja excluir o lançamento de{' '}
-            <strong className="text-white">{fmt(confirmDelete.valor)}</strong>{' '}
-            ({confirmDelete.tipo}) com vencimento em{' '}
-            <strong className="text-white">{fmtDate(confirmDelete.data_vencimento)}</strong>?
-            <br /><span className="text-slate-600">Essa ação não pode ser desfeita.</span>
-          </p>
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setConfirmDelete(null)} className={btnGhost} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>Cancelar</button>
-            <button onClick={() => handleDelete(confirmDelete.id)} className={btnPrimary} style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)' }}>Excluir</button>
-          </div>
-        </Modal>
-      )}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir lançamento?"
+        message={
+          confirmDelete && (
+            <>
+              O lançamento de <strong className="text-slate-300">{fmt(confirmDelete.valor)}</strong>{' '}
+              ({confirmDelete.tipo}) com vencimento em{' '}
+              <strong className="text-slate-300">{fmtDate(confirmDelete.data_vencimento)}</strong>{' '}
+              será removido. Esta ação não pode ser desfeita.
+            </>
+          )
+        }
+        onConfirm={() => handleDelete(confirmDelete.id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

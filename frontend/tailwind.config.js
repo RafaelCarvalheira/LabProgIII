@@ -10,6 +10,11 @@ export default {
         display: ['"Plus Jakarta Sans"', 'sans-serif'],
         body: ['"DM Sans"', 'sans-serif'],
       },
+      fontWeight: {
+        600: '600',
+        700: '700',
+        800: '800',
+      },
       colors: {
         base: '#0B0F1A',
         surface: {

@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { Plus, Search, Pencil, Trash2, Users } from 'lucide-react';
 import api from '../api/axios';
 import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { SkeletonTable } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' };
 
@@ -16,6 +18,7 @@ const btnPrimary = 'inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medi
 const btnGhost   = 'px-5 py-2.5 text-sm font-medium text-slate-400 rounded-xl transition-colors hover:text-slate-200';
 
 export default function Clientes() {
+  const toast = useToast();
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,6 +27,8 @@ export default function Clientes() {
   const [saving, setSaving]     = useState(false);
   const [search, setSearch]     = useState('');
   const [error, setError]       = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function fetchClientes() {
     try { const res = await api.get('/clientes'); setClientes(res.data); }
@@ -52,14 +57,22 @@ export default function Clientes() {
       if (editing) await api.put(`/clientes/${editing.id}`, form);
       else          await api.post('/clientes', form);
       setModalOpen(false); fetchClientes();
+      toast.success(editing ? 'Cliente atualizado!' : 'Cliente cadastrado!');
     } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar cliente'); }
     finally       { setSaving(false); }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
-    try { await api.delete(`/clientes/${id}`); fetchClientes(); }
-    catch { setError('Erro ao excluir cliente'); }
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/clientes/${confirmDelete.id}`);
+      setConfirmDelete(null);
+      fetchClientes();
+      toast.success('Cliente excluído.');
+    } catch (err) {
+      toast.error(err.response?.data?.erro || 'Erro ao excluir cliente');
+    } finally { setDeleting(false); }
   }
 
   function handleChange(field, value) { setForm((p) => ({ ...p, [field]: value })); }
@@ -110,7 +123,12 @@ export default function Clientes() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <EmptyState message="Nenhum cliente encontrado" icon={Users} />
+        <EmptyState
+          message="Nenhum cliente encontrado"
+          icon={Users}
+          actionLabel="Novo Cliente"
+          onAction={openNew}
+        />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -141,17 +159,15 @@ export default function Clientes() {
                       <div className="inline-flex gap-1">
                         <button
                           onClick={() => openEdit(c)}
-                          className="p-2 rounded-lg text-slate-600 hover:text-slate-200 transition-colors"
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          aria-label={`Editar ${c.nome}`}
+                          className="p-2 rounded-lg text-slate-600 hover:text-slate-200 hover:bg-white/10 transition-colors"
                         >
                           <Pencil size={14} strokeWidth={1.8} />
                         </button>
                         <button
-                          onClick={() => handleDelete(c.id)}
-                          className="p-2 rounded-lg text-slate-600 hover:text-rose-400 transition-colors"
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          onClick={() => setConfirmDelete(c)}
+                          aria-label={`Excluir ${c.nome}`}
+                          className="p-2 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         >
                           <Trash2 size={14} strokeWidth={1.8} />
                         </button>
@@ -166,8 +182,7 @@ export default function Clientes() {
       )}
 
       {/* Modal */}
-      {modalOpen && (
-        <Modal title={editing ? 'Editar Cliente' : 'Novo Cliente'} onClose={() => setModalOpen(false)}>
+      <Modal open={modalOpen} title={editing ? 'Editar Cliente' : 'Novo Cliente'} onClose={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>
@@ -204,7 +219,21 @@ export default function Clientes() {
             </div>
           </form>
         </Modal>
-      )}
+
+      {/* Confirmar exclusão */}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir cliente?"
+        message={
+          <>
+            <strong className="text-slate-300">{confirmDelete?.nome}</strong> será removido
+            permanentemente. Esta ação não pode ser desfeita.
+          </>
+        }
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

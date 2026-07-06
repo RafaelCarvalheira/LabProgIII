@@ -63,7 +63,6 @@ const kpiConfig = [
     glowColor: 'rgba(99,102,241,0.20)',
     iconGradient: 'linear-gradient(135deg, #6366F1, #818CF8)',
     borderColor: 'rgba(99,102,241,0.20)',
-    trend: '+2 este mês',
   },
   {
     key: 'clientes',
@@ -73,7 +72,6 @@ const kpiConfig = [
     glowColor: 'rgba(168,85,247,0.18)',
     iconGradient: 'linear-gradient(135deg, #A855F7, #C084FC)',
     borderColor: 'rgba(168,85,247,0.20)',
-    trend: 'Cadastros ativos',
   },
   {
     key: 'locacoesAtivas',
@@ -83,7 +81,6 @@ const kpiConfig = [
     glowColor: 'rgba(245,158,11,0.18)',
     iconGradient: 'linear-gradient(135deg, #F59E0B, #FCD34D)',
     borderColor: 'rgba(245,158,11,0.20)',
-    trend: 'Em andamento',
   },
   {
     key: 'receitaMes',
@@ -94,12 +91,11 @@ const kpiConfig = [
     glowColor: 'rgba(20,184,166,0.18)',
     iconGradient: 'linear-gradient(135deg, #14B8A6, #2DD4BF)',
     borderColor: 'rgba(20,184,166,0.20)',
-    trend: 'Confirmada',
   },
 ];
 
-function KPICard({ config, value, index }) {
-  const { label, icon: Icon, glowColor, iconGradient, borderColor, trend, format } = config;
+function KPICard({ config, value, trend, index }) {
+  const { label, icon: Icon, glowColor, iconGradient, borderColor, format } = config;
 
   return (
     <motion.div
@@ -251,6 +247,16 @@ export default function Dashboard() {
 
   const ultimas = useMemo(() => locacoesFiltradas.slice(0, 5), [locacoesFiltradas]);
 
+  const trends = useMemo(() => {
+    const disponiveis = rawImoveis.filter((i) => i.disponivel).length;
+    return {
+      imoveis:        `${disponiveis} ${disponiveis === 1 ? 'disponível' : 'disponíveis'}`,
+      clientes:       'Cadastros ativos',
+      locacoesAtivas: 'Em andamento',
+      receitaMes:     'Confirmada',
+    };
+  }, [rawImoveis]);
+
   const fmt = (v) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
@@ -346,7 +352,7 @@ export default function Dashboard() {
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6"
       >
         {kpiConfig.map((cfg, i) => (
-          <KPICard key={cfg.key} config={cfg} value={kpis[cfg.key]} index={i} />
+          <KPICard key={cfg.key} config={cfg} value={kpis[cfg.key]} trend={trends[cfg.key]} index={i} />
         ))}
       </motion.div>
 
@@ -447,7 +453,7 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-display text-sm font-700 text-white">Últimas Locações</h2>
-            <span className="text-[10px] font-body text-slate-600 bg-white/5 px-2 py-1 rounded-full border border-white/8">
+            <span className="text-[10px] font-body text-slate-600 bg-white/5 px-2 py-1 rounded-full border border-white/10">
               {ultimas.length} registros
             </span>
           </div>

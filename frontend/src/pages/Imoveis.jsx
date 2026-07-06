@@ -7,9 +7,11 @@ import {
 import api from '../api/axios';
 import { useFilter } from '../context/FilterContext';
 import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import { SkeletonCard } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 const GLASS = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' };
 
@@ -38,6 +40,7 @@ const cardVariants = {
 
 export default function Imoveis() {
   const { imovelIds } = useFilter() || {};
+  const toast = useToast();
   const [imoveis, setImoveis]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [modalOpen, setModalOpen]   = useState(false);
@@ -48,6 +51,8 @@ export default function Imoveis() {
   const [filterCidade, setFilterCidade] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [error, setError]           = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleting, setDeleting]     = useState(false);
 
   async function fetchImoveis() {
     try {
@@ -102,14 +107,22 @@ export default function Imoveis() {
       if (editing) { payload.disponivel = editing.disponivel; await api.put(`/imoveis/${editing.id}`, payload); }
       else { await api.post('/imoveis', payload); }
       setModalOpen(false); fetchImoveis();
+      toast.success(editing ? 'Imóvel atualizado!' : 'Imóvel cadastrado!');
     } catch (err) { setError(err.response?.data?.erro || 'Erro ao salvar imóvel'); }
     finally       { setSaving(false); }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Tem certeza que deseja excluir este imóvel?')) return;
-    try { await api.delete(`/imoveis/${id}`); fetchImoveis(); }
-    catch { setError('Erro ao excluir imóvel'); }
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/imoveis/${confirmDelete.id}`);
+      setConfirmDelete(null);
+      fetchImoveis();
+      toast.success('Imóvel excluído.');
+    } catch (err) {
+      toast.error(err.response?.data?.erro || 'Erro ao excluir imóvel');
+    } finally { setDeleting(false); }
   }
 
   function handleChange(field, value) { setForm((p) => ({ ...p, [field]: value })); }
@@ -183,7 +196,12 @@ export default function Imoveis() {
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <EmptyState message="Nenhum imóvel encontrado" icon={Building2} />
+        <EmptyState
+          message="Nenhum imóvel encontrado"
+          icon={Building2}
+          actionLabel="Novo Imóvel"
+          onAction={openNew}
+        />
       ) : (
         <motion.div
           variants={stagger} initial="hidden" animate="show"
@@ -197,23 +215,46 @@ export default function Imoveis() {
               className="rounded-2xl overflow-hidden flex flex-col"
               style={GLASS}
             >
-              {/* Status bar */}
+              {/* Header visual */}
               <div
-                className="h-1"
+                className="relative h-24 overflow-hidden"
                 style={{
                   background: im.disponivel
-                    ? 'linear-gradient(90deg, #6366F1, #14B8A6)'
-                    : 'rgba(255,255,255,0.10)',
+                    ? 'linear-gradient(135deg, rgba(99,102,241,0.28) 0%, rgba(20,184,166,0.16) 100%)'
+                    : 'linear-gradient(135deg, rgba(100,116,139,0.18) 0%, rgba(51,65,85,0.10) 100%)',
                 }}
-              />
-
-              <div className="p-5 flex flex-col flex-1">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-display text-base font-700 text-white line-clamp-1 flex-1 mr-2">
-                    {im.titulo}
-                  </h3>
+              >
+                {/* Grid decorativo */}
+                <div
+                  className="absolute inset-0 opacity-[0.06] pointer-events-none"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+                    backgroundSize: '22px 22px',
+                  }}
+                />
+                <Building2
+                  size={80}
+                  strokeWidth={1.2}
+                  className="absolute -right-3 -bottom-5 text-white/10 pointer-events-none"
+                />
+                <div className="absolute top-3 right-3">
                   <StatusBadge status={im.disponivel ? 'Disponível' : 'Indisponível'} />
                 </div>
+                <div
+                  className="absolute bottom-0 left-0 right-0 h-px"
+                  style={{
+                    background: im.disponivel
+                      ? 'linear-gradient(90deg, #6366F1, #14B8A6)'
+                      : 'rgba(255,255,255,0.10)',
+                  }}
+                />
+              </div>
+
+              <div className="p-5 flex flex-col flex-1">
+                <h3 className="font-display text-base font-700 text-white line-clamp-1 mb-2">
+                  {im.titulo}
+                </h3>
 
                 <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-4">
                   <MapPin size={12} strokeWidth={1.8} />
@@ -238,18 +279,15 @@ export default function Imoveis() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => openEdit(im)}
-                      className="p-2 rounded-lg text-slate-600 hover:text-slate-200 transition-colors"
-                      style={{ ':hover': { background: 'rgba(255,255,255,0.08)' } }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      aria-label={`Editar ${im.titulo}`}
+                      className="p-2 rounded-lg text-slate-600 hover:text-slate-200 hover:bg-white/10 transition-colors"
                     >
                       <Pencil size={14} strokeWidth={1.8} />
                     </button>
                     <button
-                      onClick={() => handleDelete(im.id)}
-                      className="p-2 rounded-lg text-slate-600 hover:text-rose-400 transition-colors"
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.12)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      onClick={() => setConfirmDelete(im)}
+                      aria-label={`Excluir ${im.titulo}`}
+                      className="p-2 rounded-lg text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                     >
                       <Trash2 size={14} strokeWidth={1.8} />
                     </button>
@@ -262,8 +300,7 @@ export default function Imoveis() {
       )}
 
       {/* Modal */}
-      {modalOpen && (
-        <Modal title={editing ? 'Editar Imóvel' : 'Novo Imóvel'} onClose={() => setModalOpen(false)} wide>
+      <Modal open={modalOpen} title={editing ? 'Editar Imóvel' : 'Novo Imóvel'} onClose={() => setModalOpen(false)} wide>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 text-rose-400 text-sm rounded-xl" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.20)' }}>{error}</div>
@@ -332,7 +369,21 @@ export default function Imoveis() {
             </div>
           </form>
         </Modal>
-      )}
+
+      {/* Confirmar exclusão */}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir imóvel?"
+        message={
+          <>
+            <strong className="text-slate-300">{confirmDelete?.titulo}</strong> será removido
+            permanentemente. Esta ação não pode ser desfeita.
+          </>
+        }
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

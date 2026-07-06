@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ChevronLeft,
   LogOut,
+  Menu,
   ShieldCheck,
   UserCircle,
   KeyRound,
@@ -41,12 +42,30 @@ const CLIENT_NAV = [
 
 const SIDEBAR_OPEN   = 260;
 const SIDEBAR_CLOSED =  72;
+const MOBILE_TOPBAR  =  56;
+const MOBILE_QUERY   = '(max-width: 767px)';
 
 export default function Layout() {
-  const [open, setOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches
+  );
+  const [open, setOpen] = useState(() => !window.matchMedia(MOBILE_QUERY).matches);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
+
+  // Acompanha o breakpoint: no mobile a sidebar vira drawer fechado por padrão
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const handler = (e) => { setIsMobile(e.matches); setOpen(!e.matches); };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Fecha o drawer ao navegar (mobile)
+  useEffect(() => {
+    if (isMobile) setOpen(false);
+  }, [location.pathname, isMobile]);
 
   const navItems = isAdmin ? ADMIN_NAV : CLIENT_NAV;
 
@@ -58,9 +77,50 @@ export default function Layout() {
   return (
     <FilterProvider>
     <div className="flex min-h-screen">
+      {/* ── Topbar mobile ───────────────────────────────────── */}
+      {isMobile && (
+        <div
+          className="fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4"
+          style={{
+            height: MOBILE_TOPBAR,
+            background: 'linear-gradient(180deg, #080C17 0%, #0C1220 100%)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Abrir menu"
+            className="p-2 rounded-xl text-slate-400 hover:text-white transition-colors"
+            style={{ background: 'rgba(255,255,255,0.05)' }}
+          >
+            <Menu size={18} strokeWidth={2} />
+          </button>
+          <RcpLogo size={28} showText />
+        </div>
+      )}
+
+      {/* ── Overlay do drawer (mobile) ──────────────────────── */}
+      <AnimatePresence>
+        {isMobile && open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-40"
+            style={{ background: 'rgba(5,8,18,0.7)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <motion.aside
-        animate={{ width: open ? SIDEBAR_OPEN : SIDEBAR_CLOSED }}
+        animate={
+          isMobile
+            ? { x: open ? 0 : -(SIDEBAR_OPEN + 12), width: SIDEBAR_OPEN }
+            : { x: 0, width: open ? SIDEBAR_OPEN : SIDEBAR_CLOSED }
+        }
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
         className="fixed left-0 top-0 bottom-0 z-50 flex flex-col overflow-hidden"
         style={{
@@ -228,6 +288,7 @@ export default function Layout() {
           {/* Collapse */}
           <button
             onClick={() => setOpen(!open)}
+            aria-label={open ? 'Recolher menu' : 'Expandir menu'}
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-xl
                         text-slate-600 hover:text-slate-300 transition-colors duration-150
                         ${!open ? 'justify-center' : ''}`}
@@ -270,11 +331,12 @@ export default function Layout() {
 
       {/* ── Main ────────────────────────────────────────────── */}
       <motion.main
-        animate={{ marginLeft: open ? SIDEBAR_OPEN : SIDEBAR_CLOSED }}
+        animate={{ marginLeft: isMobile ? 0 : open ? SIDEBAR_OPEN : SIDEBAR_CLOSED }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
         className="flex-1 main-content min-h-screen"
+        style={{ paddingTop: isMobile ? MOBILE_TOPBAR : 0 }}
       >
-        <div className="max-w-[1320px] mx-auto px-8 pt-8">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-8 pt-8">
           <ClienteFilterBar />
         </div>
         <AnimatePresence mode="wait">
@@ -284,7 +346,7 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="max-w-[1320px] mx-auto px-8 pb-8"
+            className="max-w-[1320px] mx-auto px-4 sm:px-8 pb-8"
           >
             <Outlet />
           </motion.div>

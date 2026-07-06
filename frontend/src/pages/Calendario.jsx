@@ -104,15 +104,13 @@ export default function Calendario() {
       >
         {/* Nav */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={prevMes} className="p-2 rounded-lg text-slate-500 hover:text-slate-200 transition-colors"
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+          <button onClick={prevMes} aria-label="Mês anterior"
+            className="p-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/10 transition-colors">
             <ChevronLeft size={20} strokeWidth={2} />
           </button>
           <h2 className="font-display text-base font-700 text-white">{MESES[mes]} {ano}</h2>
-          <button onClick={nextMes} className="p-2 rounded-lg text-slate-500 hover:text-slate-200 transition-colors"
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+          <button onClick={nextMes} aria-label="Próximo mês"
+            className="p-2 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/10 transition-colors">
             <ChevronRight size={20} strokeWidth={2} />
           </button>
         </div>
@@ -230,10 +228,7 @@ export default function Calendario() {
 
                     <button
                       onClick={() => setSelected(null)}
-                      className="mt-5 w-full py-2.5 text-sm font-medium text-slate-400 rounded-xl transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.06)' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                      className="mt-5 w-full py-2.5 text-sm font-medium text-slate-400 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
                     >
                       Fechar
                     </button>

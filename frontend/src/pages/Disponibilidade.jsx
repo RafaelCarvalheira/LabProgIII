@@ -250,10 +250,8 @@ function ImovelCard({ imovel, onReservar }) {
 
         <button
           onClick={onReservar}
-          className="w-full py-2.5 text-sm font-medium text-white rounded-xl transition-all"
+          className="w-full py-2.5 text-sm font-medium text-white rounded-xl transition-all hover:opacity-90"
           style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', boxShadow: '0 4px 14px rgba(99,102,241,0.25)' }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
         >
           Reservar
         </button>

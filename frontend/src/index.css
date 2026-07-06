@@ -105,6 +105,12 @@ select option { background-color: #1A2235; color: #E2E8F0; }
   animation: overlayIn 0.2s ease-out forwards;
 }
 
+/* ── Toast progress bar ─────────────────────────────────────── */
+@keyframes toastbar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
 /* ── Gradient text utility ──────────────────────────────────── */
 .gradient-text {
   background: linear-gradient(135deg, #818CF8 0%, #2DD4BF 100%);
